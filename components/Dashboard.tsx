@@ -115,7 +115,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   if (loading) {
     return (
       <div style={styles.page}>
-        <p style={styles.loadingText}>Loading your ledger…</p>
+        <p style={styles.loadingText}>Loading your Funds…</p>
       </div>
     );
   }
@@ -126,7 +126,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     <div style={styles.page}>
       <header style={styles.topbar}>
         <div>
-          <h1 style={styles.wordmark}>Ledger</h1>
+          <h1 style={styles.wordmark}>PFMS Tracker</h1>
         </div>
         <div style={styles.topbarRight}>
           <span style={styles.greeting}>{displayName}</span>
