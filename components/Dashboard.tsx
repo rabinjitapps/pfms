@@ -1,13 +1,32 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { signOut } from 'next-auth/react';
 import { PortfolioSummary, HoldingSummary } from '@/types';
+import { xirr, CashFlow } from '@/lib/xirr';
 import AddHoldingModal from './AddHoldingModal';
 import TransactionModal from './TransactionModal';
 
 function formatINR(n: number): string {
   return n.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+}
+
+function formatPct(n: number | null): string {
+  if (n === null) return '—';
+  const pct = n * 100;
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+}
+
+function holdingCashFlows(h: HoldingSummary, today: string): CashFlow[] {
+  const flows: CashFlow[] = h.transactions.map((t) => ({
+    date: t.date,
+    amount: t.type === 'BUY' ? -Number(t.amount) : Number(t.amount),
+  }));
+  // Treat the current value as a final "sale" today, so XIRR reflects unrealized gains too.
+  if (h.currentValue > 0) {
+    flows.push({ date: today, amount: h.currentValue });
+  }
+  return flows;
 }
 
 export default function Dashboard({ displayName }: { displayName: string }) {
@@ -76,6 +95,23 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     load();
   }
 
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const fundXirr = useMemo(() => {
+    const map = new Map<string, number | null>();
+    if (!portfolio) return map;
+    for (const h of portfolio.holdings) {
+      map.set(h.id, xirr(holdingCashFlows(h, today)));
+    }
+    return map;
+  }, [portfolio, today]);
+
+  const portfolioXirr = useMemo(() => {
+    if (!portfolio) return null;
+    const allFlows = portfolio.holdings.flatMap((h) => holdingCashFlows(h, today));
+    return xirr(allFlows);
+  }, [portfolio, today]);
+
   if (loading) {
     return (
       <div style={styles.page}>
@@ -124,6 +160,26 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                 </p>
               </div>
             </div>
+            <div style={styles.summaryGridSecondary}>
+              <div>
+                <p style={styles.summaryLabel}>Funds held</p>
+                <p style={styles.summaryValueSmall}>{portfolio.holdings.length}</p>
+              </div>
+              <div>
+                <p style={styles.summaryLabel}>XIRR (annualized)</p>
+                <p
+                  style={
+                    portfolioXirr === null
+                      ? styles.summaryValueSmall
+                      : portfolioXirr >= 0
+                      ? styles.xirrPositive
+                      : styles.xirrNegative
+                  }
+                >
+                  {formatPct(portfolioXirr)}
+                </p>
+              </div>
+            </div>
           </section>
         )}
 
@@ -148,6 +204,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
           <div style={styles.holdingsList}>
             {portfolio?.holdings.map((h) => {
               const positive = h.gainLoss >= 0;
+              const fundXirrValue = fundXirr.get(h.id) ?? null;
               return (
                 <button
                   key={h.id}
@@ -169,6 +226,20 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                     <p style={positive ? styles.holdingGainPositive : styles.holdingGainNegative}>
                       {positive ? '+' : ''}₹{formatINR(h.gainLoss)} ({positive ? '+' : ''}
                       {h.gainLossPct.toFixed(2)}%)
+                    </p>
+                    <p style={styles.holdingXirr}>
+                      XIRR{' '}
+                      <span
+                        style={
+                          fundXirrValue === null
+                            ? styles.holdingXirrValue
+                            : fundXirrValue >= 0
+                            ? styles.holdingXirrValuePositive
+                            : styles.holdingXirrValueNegative
+                        }
+                      >
+                        {formatPct(fundXirrValue)}
+                      </span>
                     </p>
                   </div>
                   <span
@@ -270,6 +341,35 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '20px',
+  },
+  summaryGridSecondary: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '20px',
+    marginTop: '20px',
+    paddingTop: '20px',
+    borderTop: '1px solid var(--hairline)',
+  },
+  summaryValueSmall: {
+    fontFamily: 'var(--font-display)',
+    fontSize: '20px',
+    fontWeight: 600,
+    color: 'var(--ink)',
+    margin: 0,
+  },
+  xirrPositive: {
+    fontFamily: 'var(--font-display)',
+    fontSize: '20px',
+    fontWeight: 600,
+    color: 'var(--ledger-green)',
+    margin: 0,
+  },
+  xirrNegative: {
+    fontFamily: 'var(--font-display)',
+    fontSize: '20px',
+    fontWeight: 600,
+    color: 'var(--brick)',
+    margin: 0,
   },
   summaryLabel: {
     fontSize: '12px',
@@ -417,6 +517,23 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--brick)',
     margin: 0,
     fontFamily: 'var(--font-mono)',
+  },
+  holdingXirr: {
+    fontSize: '11.5px',
+    color: 'var(--ink-faint)',
+    margin: '4px 0 0',
+    fontFamily: 'var(--font-mono)',
+  },
+  holdingXirrValue: {
+    color: 'var(--ink-faint)',
+  },
+  holdingXirrValuePositive: {
+    color: 'var(--ledger-green)',
+    fontWeight: 600,
+  },
+  holdingXirrValueNegative: {
+    color: 'var(--brick)',
+    fontWeight: 600,
   },
   removeBtn: {
     position: 'absolute',
