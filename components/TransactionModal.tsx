@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { HoldingSummary } from '@/types';
 
 interface Props {
@@ -9,13 +9,20 @@ interface Props {
   onSaved: () => void;
 }
 
+type EntryMode = 'amount' | 'units';
+
 export default function TransactionModal({ holding, onClose, onSaved }: Props) {
   const [tab, setTab] = useState<'transaction' | 'nav' | 'history'>('transaction');
 
   const [type, setType] = useState<'BUY' | 'SELL'>('BUY');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [entryMode, setEntryMode] = useState<EntryMode>('amount');
+  const [amount, setAmount] = useState('');
   const [units, setUnits] = useState('');
   const [nav, setNav] = useState('');
+  const [navAutoFetched, setNavAutoFetched] = useState(false);
+  const [navFetching, setNavFetching] = useState(false);
+  const [navFetchNote, setNavFetchNote] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -23,10 +30,67 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
   const [navValue, setNavValue] = useState(holding.fund.latest_nav?.toString() ?? '');
   const [navDate, setNavDate] = useState(new Date().toISOString().slice(0, 10));
 
+  const hasSchemeCode = Boolean(holding.fund.scheme_code);
+  const lastFetchedKey = useRef<string>('');
+
+  // Auto-fetch NAV from mfapi.in whenever the date changes (AMFI-linked funds only).
+  useEffect(() => {
+    if (tab !== 'transaction' || !hasSchemeCode || !date) return;
+
+    const key = `${holding.fund.scheme_code}:${date}`;
+    if (lastFetchedKey.current === key) return;
+    lastFetchedKey.current = key;
+
+    let cancelled = false;
+    setNavFetching(true);
+    setNavFetchNote('');
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/funds/nav-on-date?schemeCode=${holding.fund.scheme_code}&date=${date}`
+        );
+        const data = await res.json();
+        if (cancelled) return;
+        if (!res.ok) {
+          setNavFetchNote(data.error || 'Could not fetch NAV for this date.');
+          setNavAutoFetched(false);
+          return;
+        }
+        setNav(data.nav.toString());
+        setNavAutoFetched(true);
+        if (data.date !== date) {
+          setNavFetchNote(`Market closed on ${date}; using NAV from ${data.date}.`);
+        } else {
+          setNavFetchNote('');
+        }
+      } catch {
+        if (!cancelled) setNavFetchNote('Could not reach NAV lookup. Enter NAV manually.');
+      } finally {
+        if (!cancelled) setNavFetching(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [date, tab, hasSchemeCode, holding.fund.scheme_code]);
+
+  const navNum = Number(nav) || 0;
+  const computedUnits = entryMode === 'amount' && navNum > 0 && amount ? Number(amount) / navNum : null;
+  const computedAmount = entryMode === 'units' && navNum > 0 && units ? Number(units) * navNum : null;
+
+  const finalUnits = entryMode === 'amount' ? computedUnits : Number(units) || 0;
+  const finalAmount = entryMode === 'units' ? computedAmount : Number(amount) || 0;
+
   async function handleAddTransaction() {
     setError('');
-    if (!units || !nav) {
-      setError('Units and NAV are required.');
+    if (!nav || navNum <= 0) {
+      setError('NAV is required.');
+      return;
+    }
+    if (!finalUnits || finalUnits <= 0) {
+      setError(entryMode === 'amount' ? 'Enter an amount.' : 'Enter units.');
       return;
     }
     setSaving(true);
@@ -38,8 +102,8 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
           holdingId: holding.id,
           type,
           date,
-          units: Number(units),
-          nav: Number(nav),
+          units: finalUnits,
+          nav: navNum,
           notes: notes || null,
         }),
       });
@@ -49,8 +113,8 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
         return;
       }
       onSaved();
+      setAmount('');
       setUnits('');
-      setNav('');
       setNotes('');
     } finally {
       setSaving(false);
@@ -83,7 +147,13 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
 
   async function handleDeleteTransaction(id: string) {
     if (!confirm('Delete this transaction? This cannot be undone.')) return;
-    await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+    setError('');
+    const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || 'Could not delete transaction.');
+      return;
+    }
     onSaved();
   }
 
@@ -152,36 +222,85 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
                   onChange={(e) => setDate(e.target.value)}
                 />
               </label>
-            </div>
-
-            <div style={styles.row}>
               <label style={styles.label}>
-                Units
-                <input
-                  style={styles.input}
-                  type="number"
-                  step="0.0001"
-                  value={units}
-                  onChange={(e) => setUnits(e.target.value)}
-                  placeholder="0.000"
-                />
-              </label>
-              <label style={styles.label}>
-                NAV (₹)
+                NAV (₹){navFetching && <span style={styles.navStatus}> · fetching…</span>}
+                {!navFetching && navAutoFetched && (
+                  <span style={styles.navStatusOk}> · auto-filled</span>
+                )}
                 <input
                   style={styles.input}
                   type="number"
                   step="0.0001"
                   value={nav}
-                  onChange={(e) => setNav(e.target.value)}
-                  placeholder="0.00"
+                  onChange={(e) => {
+                    setNav(e.target.value);
+                    setNavAutoFetched(false);
+                  }}
+                  placeholder={hasSchemeCode ? 'Auto-filled from date' : '0.00'}
                 />
               </label>
             </div>
 
-            {units && nav && (
+            {navFetchNote && <p style={styles.navNote}>{navFetchNote}</p>}
+            {!hasSchemeCode && (
+              <p style={styles.navNote}>
+                This fund has no AMFI code, so NAV can&apos;t be auto-fetched — enter it manually.
+              </p>
+            )}
+
+            <div style={styles.entryToggle}>
+              <button
+                style={entryMode === 'amount' ? styles.entryBtnActive : styles.entryBtn}
+                onClick={() => setEntryMode('amount')}
+              >
+                Enter amount
+              </button>
+              <button
+                style={entryMode === 'units' ? styles.entryBtnActive : styles.entryBtn}
+                onClick={() => setEntryMode('units')}
+              >
+                Enter units
+              </button>
+            </div>
+
+            {entryMode === 'amount' ? (
+              <div style={styles.row}>
+                <label style={styles.label}>
+                  Amount (₹)
+                  <input
+                    style={styles.input}
+                    type="number"
+                    step="0.01"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                </label>
+              </div>
+            ) : (
+              <div style={styles.row}>
+                <label style={styles.label}>
+                  Units
+                  <input
+                    style={styles.input}
+                    type="number"
+                    step="0.0001"
+                    value={units}
+                    onChange={(e) => setUnits(e.target.value)}
+                    placeholder="0.000"
+                  />
+                </label>
+              </div>
+            )}
+
+            {entryMode === 'amount' && computedUnits !== null && (
               <p style={styles.computedAmount}>
-                Amount: ₹{(Number(units) * Number(nav)).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                ≈ {computedUnits.toLocaleString('en-IN', { maximumFractionDigits: 4 })} units
+              </p>
+            )}
+            {entryMode === 'units' && computedAmount !== null && (
+              <p style={styles.computedAmount}>
+                ≈ ₹{computedAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
               </p>
             )}
 
@@ -248,6 +367,7 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
 
         {tab === 'history' && (
           <div>
+            {error && <p style={styles.error}>{error}</p>}
             {sortedTxns.length === 0 ? (
               <p style={styles.hint}>No transactions recorded yet.</p>
             ) : (
@@ -395,6 +515,44 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: '12px',
     marginBottom: '16px',
+  },
+  navStatus: {
+    color: 'var(--ink-faint)',
+    fontWeight: 400,
+    fontSize: '12px',
+  },
+  navStatusOk: {
+    color: 'var(--ledger-green)',
+    fontWeight: 500,
+    fontSize: '12px',
+  },
+  navNote: {
+    fontSize: '12px',
+    color: 'var(--brass)',
+    margin: '-10px 0 14px',
+  },
+  entryToggle: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '16px',
+  },
+  entryBtn: {
+    padding: '7px 12px',
+    border: '1px solid var(--hairline)',
+    borderRadius: '4px',
+    background: 'var(--paper)',
+    color: 'var(--ink-faint)',
+    fontSize: '13px',
+    fontWeight: 500,
+  },
+  entryBtnActive: {
+    padding: '7px 12px',
+    border: '1px solid var(--brass)',
+    borderRadius: '4px',
+    background: 'var(--brass-soft)',
+    color: 'var(--brass)',
+    fontSize: '13px',
+    fontWeight: 600,
   },
   label: {
     flex: 1,
