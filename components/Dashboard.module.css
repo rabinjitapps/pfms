@@ -262,6 +262,13 @@
   font-family: var(--font-mono);
 }
 
+.holdingMetaSecondary {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  margin: 3px 0 0;
+  font-family: var(--font-mono);
+}
+
 .holdingDate {
   color: var(--ink-faint);
 }

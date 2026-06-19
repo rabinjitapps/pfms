@@ -18,6 +18,43 @@ function formatPct(n: number | null): string {
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
 }
 
+function earliestTransactionDate(h: HoldingSummary): string | null {
+  if (h.transactions.length === 0) return null;
+  return h.transactions.reduce((min, t) => (t.date < min ? t.date : min), h.transactions[0].date);
+}
+
+// Calendar-accurate age breakdown (years, months, days) between two
+// ISO date strings, plus the raw day count.
+function fundAge(startDate: string | null, today: string): { label: string; days: number } | null {
+  if (!startDate) return null;
+  const start = new Date(startDate + 'T00:00:00');
+  const end = new Date(today + 'T00:00:00');
+  if (Number.isNaN(start.getTime())) return null;
+
+  const days = Math.max(0, Math.round((end.getTime() - start.getTime()) / 86400000));
+
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+  let dayPart = end.getDate() - start.getDate();
+  if (dayPart < 0) {
+    months -= 1;
+    // Last day of the month before `end`'s month gives the correct days-in-month carry.
+    const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
+    dayPart += prevMonth.getDate();
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years}y`);
+  if (months > 0) parts.push(`${months}m`);
+  if (dayPart > 0 || parts.length === 0) parts.push(`${dayPart}d`);
+
+  return { label: parts.join(' '), days };
+}
+
 function holdingCashFlows(h: HoldingSummary, today: string): CashFlow[] {
   const flows: CashFlow[] = h.transactions.map((t) => ({
     date: t.date,
@@ -220,6 +257,17 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                       {h.fund.latest_nav_date && (
                         <span className={styles.holdingDate}> as of {h.fund.latest_nav_date}</span>
                       )}
+                    </p>
+                    <p className={styles.holdingMetaSecondary}>
+                      Invested ₹{formatINR(h.investedAmount)}
+                      {(() => {
+                        const age = fundAge(earliestTransactionDate(h), today);
+                        return age ? (
+                          <span className={styles.holdingDate}>
+                            {' · Held '}{age.label}{' ('}{age.days}{' days)'}
+                          </span>
+                        ) : null;
+                      })()}
                     </p>
                   </div>
                   <div className={styles.holdingFigures}>
