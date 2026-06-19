@@ -38,7 +38,7 @@ export default function LoginPage() {
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.wordmarkBlock}>
-          <h1 style={styles.wordmark}>Ledger</h1>
+          <h1 style={styles.wordmark}>PFMS Tracker</h1>
           <div style={styles.rule} />
           <div style={styles.ruleThin} />
           <p style={styles.tagline}>A quiet place to keep your mutual fund holdings.</p>
