@@ -82,6 +82,8 @@ export interface ExpenseEntry {
 }
 
 export interface ExpenseSummary {
+  month: string; // YYYY-MM, the month this summary reflects
+  availableMonths: string[]; // YYYY-MM[], sorted ascending — months with at least one entry, plus the current month
   totalInflow: number;
   totalOutflow: number;
   net: number;
