@@ -7,7 +7,7 @@ interface Props {
   categories: ExpenseCategory[];
   defaultDirection: ExpenseDirection;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (date: string) => void;
 }
 
 const NEW_HEAD_VALUE = '__new__';
@@ -89,7 +89,7 @@ export default function AddExpenseModal({ categories, defaultDirection, onClose,
         setError(data.error || 'Could not save entry.');
         return;
       }
-      onSaved();
+      onSaved(date);
       onClose();
     } finally {
       setSaving(false);
