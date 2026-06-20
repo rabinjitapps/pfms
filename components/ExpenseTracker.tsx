@@ -124,6 +124,8 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   }
 
   const netPositive = (summary?.net ?? 0) >= 0;
+  const runningBalancePositive = (summary?.netWithCarryForward ?? 0) >= 0;
+  const carryForwardPositive = (summary?.carryForward ?? 0) >= 0;
 
   return (
     <div className={styles.page}>
@@ -157,6 +159,14 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
         {summary && (
           <section className={styles.summaryCard}>
             <p className={styles.summaryHeading}>Cashbook summary &middot; {formatMonthLong(summary.month)}</p>
+            {summary.carryForward !== 0 && (
+              <p className={styles.carryForwardLine}>
+                Carried forward from previous months:{' '}
+                <span className={carryForwardPositive ? styles.netPositive : styles.netNegative}>
+                  {carryForwardPositive ? '+' : ''}₹{formatINR(summary.carryForward)}
+                </span>
+              </p>
+            )}
             <div className={styles.summaryGrid}>
               <div>
                 <p className={styles.summaryLabel}>Inflow</p>
@@ -167,10 +177,18 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
                 <p className={styles.outflowValue}>₹{formatINR(summary.totalOutflow)}</p>
               </div>
               <div>
-                <p className={styles.summaryLabel}>Net</p>
+                <p className={styles.summaryLabel}>Net (this month)</p>
+                <p className={netPositive ? styles.netPositive : styles.netNegative}>
+                  {netPositive ? '+' : ''}₹{formatINR(summary.net)}
+                </p>
+              </div>
+            </div>
+            <div className={styles.summaryGridSecondary}>
+              <div>
+                <p className={styles.summaryLabel}>Closing balance &middot; carried to next month</p>
                 <div className={styles.totalRule}>
-                  <p className={netPositive ? styles.netPositive : styles.netNegative}>
-                    {netPositive ? '+' : ''}₹{formatINR(summary.net)}
+                  <p className={runningBalancePositive ? styles.netPositive : styles.netNegative}>
+                    {runningBalancePositive ? '+' : ''}₹{formatINR(summary.netWithCarryForward)}
                   </p>
                 </div>
               </div>
