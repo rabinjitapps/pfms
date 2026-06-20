@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : currentMonth();
   const { start, end } = monthBounds(month);
 
-  const [categoriesRes, entriesRes, monthsRes] = await Promise.all([
+  const [categoriesRes, entriesRes, monthsRes, priorEntriesRes] = await Promise.all([
     supabaseAdmin
       .from('expense_categories')
       .select('*')
@@ -50,6 +50,13 @@ export async function GET(req: NextRequest) {
       .select('date')
       .eq('user_id', userId)
       .order('date', { ascending: true }),
+    // Every entry strictly before this month's start, to compute the
+    // running balance carried forward into the selected month.
+    supabaseAdmin
+      .from('expense_entries')
+      .select('direction, amount')
+      .eq('user_id', userId)
+      .lt('date', start),
   ]);
 
   if (categoriesRes.error) {
@@ -64,6 +71,10 @@ export async function GET(req: NextRequest) {
     console.error('Failed to fetch expense entry months:', monthsRes.error);
     return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 });
   }
+  if (priorEntriesRes.error) {
+    console.error('Failed to fetch prior expense entries:', priorEntriesRes.error);
+    return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 });
+  }
 
   const entries = (entriesRes.data ?? []) as unknown as ExpenseEntry[];
 
@@ -73,6 +84,11 @@ export async function GET(req: NextRequest) {
   const totalOutflow = entries
     .filter((e) => e.direction === 'OUTFLOW')
     .reduce((sum, e) => sum + Number(e.amount), 0);
+
+  const carryForward = (priorEntriesRes.data ?? []).reduce((sum, e) => {
+    const amount = Number(e.amount);
+    return sum + (e.direction === 'INFLOW' ? amount : -amount);
+  }, 0);
 
   const availableMonths = Array.from(
     new Set((monthsRes.data ?? []).map((r) => (r.date as string).slice(0, 7)))
@@ -87,9 +103,11 @@ export async function GET(req: NextRequest) {
   const summary: ExpenseSummary = {
     month,
     availableMonths,
+    carryForward,
     totalInflow,
     totalOutflow,
     net: totalInflow - totalOutflow,
+    netWithCarryForward: carryForward + totalInflow - totalOutflow,
     categories: categoriesRes.data ?? [],
     entries,
   };
