@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { signOut } from 'next-auth/react';
 import { ExpenseSummary, ExpenseEntry } from '@/types';
 import PageNav from './PageNav';
+import MonthSwitcher from './MonthSwitcher';
 import AddExpenseModal from './AddExpenseModal';
 import ManageHeadsModal from './ManageHeadsModal';
 import styles from './ExpenseTracker.module.css';
@@ -20,6 +21,12 @@ function formatStatementDate(iso: string): string {
 function formatEntryDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatMonthLong(month: string): string {
+  const [year, m] = month.split('-').map(Number);
+  const d = new Date(year, m - 1, 1);
+  return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
 
 // Groups entries (already sorted newest-first by the API) under their date,
@@ -39,16 +46,17 @@ function groupByDate(entries: ExpenseEntry[]): { date: string; entries: ExpenseE
 
 export default function ExpenseTracker({ displayName }: { displayName: string }) {
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showHeadsModal, setShowHeadsModal] = useState(false);
   const [defaultDirection, setDefaultDirection] = useState<'INFLOW' | 'OUTFLOW'>('OUTFLOW');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forMonth: string) => {
     setError('');
     try {
-      const res = await fetch('/api/expense-entries');
+      const res = await fetch(`/api/expense-entries?month=${forMonth}`);
       if (!res.ok) {
         setError('Could not load your entries.');
         return;
@@ -63,13 +71,15 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    load(month);
+  }, [load, month]);
+
+  const refresh = useCallback(() => load(month), [load, month]);
 
   async function handleDeleteEntry(id: string) {
     if (!confirm('Delete this entry? This cannot be undone.')) return;
     await fetch(`/api/expense-entries/${id}`, { method: 'DELETE' });
-    load();
+    refresh();
   }
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -91,6 +101,18 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   function openAdd(direction: 'INFLOW' | 'OUTFLOW') {
     setDefaultDirection(direction);
     setShowAddModal(true);
+  }
+
+  // After saving an entry, jump to whichever month it was actually dated
+  // in — otherwise an entry backdated (or postdated) outside the month
+  // currently being viewed would seem to vanish.
+  function handleEntrySaved(entryDate: string) {
+    const entryMonth = entryDate.slice(0, 7);
+    if (entryMonth !== month) {
+      setMonth(entryMonth);
+    } else {
+      refresh();
+    }
   }
 
   if (loading) {
@@ -125,8 +147,16 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
         {error && <p className={styles.errorBanner}>{error}</p>}
 
         {summary && (
+          <MonthSwitcher
+            month={summary.month}
+            availableMonths={summary.availableMonths}
+            onChange={setMonth}
+          />
+        )}
+
+        {summary && (
           <section className={styles.summaryCard}>
-            <p className={styles.summaryHeading}>Cashbook summary</p>
+            <p className={styles.summaryHeading}>Cashbook summary &middot; {formatMonthLong(summary.month)}</p>
             <div className={styles.summaryGrid}>
               <div>
                 <p className={styles.summaryLabel}>Inflow</p>
@@ -162,9 +192,9 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
 
         {summary && summary.entries.length === 0 ? (
           <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>The cashbook is blank.</p>
+            <p className={styles.emptyTitle}>No entries for {formatMonthLong(summary.month)}.</p>
             <p className={styles.emptyBody}>
-              Log your first income or expense entry to start tracking daily cash flow.
+              Log an income or expense entry to start tracking cash flow for this month.
             </p>
           </div>
         ) : (
@@ -227,7 +257,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
           categories={summary?.categories ?? []}
           defaultDirection={defaultDirection}
           onClose={() => setShowAddModal(false)}
-          onSaved={load}
+          onSaved={handleEntrySaved}
         />
       )}
 
@@ -236,7 +266,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
           incomeHeads={incomeHeads}
           expenseHeads={expenseHeads}
           onClose={() => setShowHeadsModal(false)}
-          onChanged={load}
+          onChanged={refresh}
         />
       )}
     </div>

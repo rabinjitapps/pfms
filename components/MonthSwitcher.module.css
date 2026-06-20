@@ -1,0 +1,56 @@
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.arrowBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--ink-soft);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.arrowBtn:hover:not(:disabled) {
+  border-color: var(--ledger-green);
+  color: var(--ledger-green);
+}
+
+.arrowBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.monthSelect {
+  padding: 7px 12px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 168px;
+  text-align: center;
+  text-align-last: center;
+}
+
+@media (max-width: 640px) {
+  .switcher {
+    margin-bottom: 16px;
+  }
+
+  .monthSelect {
+    flex: 1;
+    min-width: 0;
+  }
+}
