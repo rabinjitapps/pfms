@@ -13,7 +13,7 @@
 }
 
 /* ----------------------------------------------------------------
-   Letterhead
+   Letterhead (mirrors Dashboard.module.css)
    ---------------------------------------------------------------- */
 .topbar {
   display: flex;
@@ -108,7 +108,7 @@
 }
 
 /* ----------------------------------------------------------------
-   Statement / summary card
+   Summary card
    ---------------------------------------------------------------- */
 .summaryCard {
   background: var(--paper-raised);
@@ -144,15 +144,6 @@
   padding-left: 24px;
 }
 
-.summaryGridSecondary {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-  margin-top: 26px;
-  padding-top: 20px;
-  border-top: 1px solid var(--hairline);
-}
-
 .summaryLabel {
   font-size: 11.5px;
   color: var(--ink-faint);
@@ -162,18 +153,28 @@
   font-weight: 600;
 }
 
-.summaryValue {
+.inflowValue {
   font-family: var(--font-display);
   font-size: 30px;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--ledger-green);
   margin: 0;
   word-break: break-word;
   font-variant-numeric: tabular-nums;
 }
 
-/* The classic ledger "total struck twice" — a double rule under the
-   portfolio's final, tallied figure. Reserved for this one number. */
+.outflowValue {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--brick);
+  margin: 0;
+  word-break: break-word;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The classic ledger "total struck twice" — reserved for the one
+   tallied net figure, same device as the portfolio total. */
 .totalRule {
   display: inline-block;
   margin-top: 9px;
@@ -188,25 +189,7 @@
   border-bottom: 1px solid var(--ink);
 }
 
-.summaryValueSecondary {
-  font-family: var(--font-display);
-  font-size: 30px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  margin: 0;
-  word-break: break-word;
-  font-variant-numeric: tabular-nums;
-}
-
-.summaryValueSmall {
-  font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 600;
-  color: var(--ink);
-  margin: 0;
-}
-
-.gainPositive {
+.netPositive {
   font-family: var(--font-display);
   font-size: 30px;
   font-weight: 600;
@@ -216,7 +199,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gainNegative {
+.netNegative {
   font-family: var(--font-display);
   font-size: 30px;
   font-weight: 600;
@@ -224,30 +207,6 @@
   margin: 0;
   word-break: break-word;
   font-variant-numeric: tabular-nums;
-}
-
-.gainPct {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 500;
-  display: inline-block;
-  opacity: 0.85;
-}
-
-.xirrPositive {
-  font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 600;
-  color: var(--ledger-green);
-  margin: 0;
-}
-
-.xirrNegative {
-  font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 600;
-  color: var(--brick);
-  margin: 0;
 }
 
 /* ----------------------------------------------------------------
@@ -261,7 +220,7 @@
   flex-wrap: wrap;
 }
 
-.primaryBtn {
+.inflowBtn {
   padding: 11px 20px;
   background: var(--ledger-green);
   border: 1px solid var(--ledger-green);
@@ -275,11 +234,33 @@
   transition: background 0.15s ease, transform 0.1s ease;
 }
 
-.primaryBtn:hover {
+.inflowBtn:hover {
   background: #173b2c;
 }
 
-.primaryBtn:active {
+.inflowBtn:active {
+  transform: translateY(1px);
+}
+
+.outflowBtn {
+  padding: 11px 20px;
+  background: var(--brick);
+  border: 1px solid var(--brick);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--paper-raised);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.outflowBtn:hover {
+  background: #7e2a1e;
+}
+
+.outflowBtn:active {
   transform: translateY(1px);
 }
 
@@ -297,20 +278,9 @@
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.secondaryBtn:hover:not(:disabled) {
+.secondaryBtn:hover {
   border-color: var(--ink-soft);
   color: var(--ink);
-}
-
-.secondaryBtn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.refreshMsg {
-  font-size: 12.5px;
-  color: var(--ink-faint);
-  font-family: var(--font-mono);
 }
 
 /* ----------------------------------------------------------------
@@ -338,193 +308,162 @@
 }
 
 /* ----------------------------------------------------------------
-   Holdings ledger
+   Daily entries — cashbook lines grouped by date
    ---------------------------------------------------------------- */
-.holdingsList {
+.entriesList {
   display: flex;
   flex-direction: column;
+  gap: 22px;
 }
 
-.ledgerHeader {
-  display: grid;
-  grid-template-columns: minmax(160px, 1.7fr) 112px 130px 158px 84px;
-  column-gap: 18px;
-  padding: 0 20px 10px;
-  border-bottom: 1.5px solid var(--ink);
-  margin-bottom: 4px;
-}
-
-.ledgerHeaderCell {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--brass);
-  text-align: right;
-}
-
-.ledgerHeaderCell:first-child {
-  text-align: left;
-}
-
-.holdingRow {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(160px, 1.7fr) 112px 130px 158px 84px;
-  column-gap: 18px;
-  align-items: center;
-  width: 100%;
-  text-align: left;
-  padding: 17px 20px;
+.dayGroup {
   background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dayHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 18px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.dayDate {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.dayTotals {
+  display: flex;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dayInflow {
+  color: var(--ledger-green);
+}
+
+.dayOutflow {
+  color: var(--brick);
+}
+
+.entryRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 18px;
   border-bottom: 1px solid var(--hairline);
   transition: background 0.15s ease;
 }
 
-.holdingsList .holdingRow:first-of-type {
-  border-top: none;
+.entryRow:last-child {
+  border-bottom: none;
 }
 
-.holdingRow:hover {
+.entryRow:hover {
   background: var(--brass-soft);
 }
 
-.holdingMain {
+.entryRow:hover .deleteBtn {
+  opacity: 1;
+}
+
+.entryMain {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   min-width: 0;
+  flex: 1;
 }
 
-.holdingName {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-  margin: 0 0 4px;
-}
-
-.holdingMeta {
-  font-size: 12px;
-  color: var(--ink-faint);
-  margin: 0;
+.tagInflow,
+.tagOutflow {
+  flex-shrink: 0;
   font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
 }
 
-.holdingWarning {
-  font-size: 12px;
+.tagInflow {
+  color: var(--ledger-green);
+  background: var(--ledger-green-soft);
+}
+
+.tagOutflow {
   color: var(--brick);
   background: var(--brick-soft);
-  margin: 0 0 6px;
-  padding: 5px 8px;
-  border-radius: 3px;
-  font-weight: 500;
-  line-height: 1.4;
 }
 
-.holdingMetaSecondary {
-  font-size: 12px;
+.entryHead {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entryNotes {
+  font-size: 12.5px;
   color: var(--ink-faint);
-  margin: 3px 0 0;
-  font-family: var(--font-mono);
-}
-
-.holdingDate {
-  color: var(--ink-faint);
-}
-
-.figureCell {
-  text-align: right;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   min-width: 0;
 }
 
-.figureLabel {
-  display: none;
-}
-
-.figureInvested {
-  font-size: 14px;
-  color: var(--ink-soft);
-  margin: 0;
+.entryAmountIn {
+  flex-shrink: 0;
   font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.holdingValue {
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
-  color: var(--ink);
-  margin: 0;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.holdingGainPositive {
-  font-size: 13.5px;
   color: var(--ledger-green);
-  margin: 0;
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-.holdingGainNegative {
-  font-size: 13.5px;
-  color: var(--brick);
-  margin: 0;
+.entryAmountOut {
+  flex-shrink: 0;
   font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.gainPctSmall {
-  display: block;
-  font-size: 11px;
-  opacity: 0.85;
-}
-
-.holdingXirrValue {
-  font-size: 13.5px;
-  color: var(--ink-faint);
-  margin: 0;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.holdingXirrValuePositive {
-  font-size: 13.5px;
-  color: var(--ledger-green);
+  font-size: 14.5px;
   font-weight: 600;
-  margin: 0;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-.holdingXirrValueNegative {
-  font-size: 13.5px;
   color: var(--brick);
-  font-weight: 600;
-  margin: 0;
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-.removeBtn {
-  position: absolute;
-  top: 10px;
-  right: 14px;
+.deleteBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-faint);
-  opacity: 0.55;
+  opacity: 0;
   padding: 4px;
-  z-index: 1;
   transition: color 0.15s ease, opacity 0.15s ease;
 }
 
-.holdingRow:hover .removeBtn {
-  opacity: 1;
-}
-
-.removeBtn:hover {
+.deleteBtn:hover {
   color: var(--brick);
 }
 
@@ -568,8 +507,6 @@
     padding: 20px 16px 18px;
   }
 
-  /* Stack the three primary stats and drop the column rules —
-     a vertical hairline at this width does more harm than good. */
   .summaryGrid {
     grid-template-columns: 1fr;
     gap: 18px;
@@ -580,90 +517,36 @@
     padding-left: 0;
   }
 
-  .summaryGridSecondary {
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-  }
-
-  .summaryValue,
-  .summaryValueSecondary,
-  .gainPositive,
-  .gainNegative {
+  .inflowValue,
+  .outflowValue,
+  .netPositive,
+  .netNegative {
     font-size: 27px;
-  }
-
-  .gainPct {
-    display: block;
-    margin-top: 3px;
-  }
-
-  .summaryValueSmall,
-  .xirrPositive,
-  .xirrNegative {
-    font-size: 18px;
   }
 
   .actionsRow {
     gap: 10px;
   }
 
-  .primaryBtn,
+  .inflowBtn,
+  .outflowBtn,
   .secondaryBtn {
     flex: 1 1 auto;
     text-align: center;
     padding: 12px 14px;
   }
 
-  .refreshMsg {
-    width: 100%;
-    order: 3;
+  .entryRow {
+    flex-wrap: wrap;
+    padding: 12px 14px;
   }
 
-  /* Ledger table collapses to a stacked statement-line layout:
-     name + meta on top, then label/value pairs for each figure. */
-  .ledgerHeader {
-    display: none;
+  .entryMain {
+    flex-basis: 100%;
   }
 
-  .holdingRow {
-    grid-template-columns: 1fr;
-    row-gap: 10px;
-    padding: 16px 16px 14px;
-    border-radius: 4px;
-    margin-bottom: 8px;
-    border: 1px solid var(--hairline);
-  }
-
-  .holdingMain {
-    padding-right: 60px;
-  }
-
-  .figureCell {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    text-align: left;
-    padding-top: 6px;
-    border-top: 1px solid var(--hairline);
-  }
-
-  .figureLabel {
-    display: inline;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-  }
-
-  .gainPctSmall {
-    display: inline;
-    margin-left: 6px;
-  }
-
-  .removeBtn {
-    top: 14px;
-    right: 14px;
+  .deleteBtn {
+    opacity: 1;
   }
 }
 
@@ -672,10 +555,10 @@
     display: none;
   }
 
-  .summaryValue,
-  .summaryValueSecondary,
-  .gainPositive,
-  .gainNegative {
+  .inflowValue,
+  .outflowValue,
+  .netPositive,
+  .netNegative {
     font-size: 23px;
   }
 }

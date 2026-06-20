@@ -6,6 +6,7 @@ import { PortfolioSummary, HoldingSummary } from '@/types';
 import { xirr, CashFlow } from '@/lib/xirr';
 import AddHoldingModal from './AddHoldingModal';
 import TransactionModal from './TransactionModal';
+import PageNav from './PageNav';
 import styles from './Dashboard.module.css';
 
 function formatINR(n: number): string {
@@ -168,16 +169,19 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
-        <div className={styles.brandBlock}>
-          <span className={styles.eyebrow}>Statement &middot; as of {formatStatementDate(today)}</span>
-          <h1 className={styles.wordmark}>PFMS Tracker</h1>
+        <div className={styles.topbarMain}>
+          <div className={styles.brandBlock}>
+            <span className={styles.eyebrow}>Statement &middot; as of {formatStatementDate(today)}</span>
+            <h1 className={styles.wordmark}>PFMS Tracker</h1>
+          </div>
+          <div className={styles.topbarRight}>
+            <span className={styles.greeting}>{displayName}</span>
+            <button className={styles.signOutBtn} onClick={() => signOut({ callbackUrl: '/login' })}>
+              Sign out
+            </button>
+          </div>
         </div>
-        <div className={styles.topbarRight}>
-          <span className={styles.greeting}>{displayName}</span>
-          <button className={styles.signOutBtn} onClick={() => signOut({ callbackUrl: '/login' })}>
-            Sign out
-          </button>
-        </div>
+        <PageNav active="funds" />
       </header>
 
       <main className={styles.main}>
