@@ -55,7 +55,11 @@ export async function GET() {
   const holdings = (data ?? []) as unknown as Holding[];
   const summaries = holdings
     .map(summarize)
-    .filter((h) => h.totalUnits > 0.0001 || h.transactions.length === 0)
+    // Only hide holdings that are genuinely closed out (units net to ~0).
+    // Negative units mean a data problem (e.g. a sell that exceeded what
+    // was held) and should stay visible so it can be spotted and fixed,
+    // rather than silently disappearing from the list.
+    .filter((h) => Math.abs(h.totalUnits) > 0.0001 || h.transactions.length === 0)
     .sort((a, b) => b.currentValue - a.currentValue);
 
   const totalInvested = summaries.reduce((sum, h) => sum + h.investedAmount, 0);
