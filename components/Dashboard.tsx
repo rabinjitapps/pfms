@@ -222,6 +222,35 @@ export default function Dashboard({ displayName }: { displayName: string }) {
 
   const monthlyFlows = useMemo(() => monthlyFlowsAcrossPortfolio(portfolio), [portfolio]);
 
+  // Medal rankings (top 3) for active holdings only — a fully exited (0-unit)
+  // fund has no meaningful "current" performance to rank against the rest.
+  const xirrRank = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!portfolio) return map;
+    const ranked = portfolio.holdings
+      .filter((h) => Math.abs(h.totalUnits) > 0.0001)
+      .map((h) => ({ id: h.id, value: fundXirr.get(h.id) }))
+      .filter((r): r is { id: string; value: number } => r.value !== null && r.value !== undefined)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3);
+    ranked.forEach((r, i) => map.set(r.id, i + 1));
+    return map;
+  }, [portfolio, fundXirr]);
+
+  const gainPctRank = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!portfolio) return map;
+    const ranked = portfolio.holdings
+      .filter((h) => Math.abs(h.totalUnits) > 0.0001)
+      .map((h) => ({ id: h.id, value: h.gainLossPct }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3);
+    ranked.forEach((r, i) => map.set(r.id, i + 1));
+    return map;
+  }, [portfolio]);
+
+  const medalEmoji = ['🥇', '🥈', '🥉'];
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -372,6 +401,11 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                   <div className={styles.figureCell}>
                     <span className={styles.figureLabel}>Gain / loss</span>
                     <p className={positive ? styles.holdingGainPositive : styles.holdingGainNegative}>
+                      {gainPctRank.has(h.id) && (
+                        <span className={styles.medalBadge} title={`#${gainPctRank.get(h.id)} by gain/loss %`}>
+                          {medalEmoji[gainPctRank.get(h.id)! - 1]}
+                        </span>
+                      )}
                       {positive ? '+' : ''}₹{formatINR(h.gainLoss)}
                       <span className={styles.gainPctSmall}>
                         ({positive ? '+' : ''}{h.gainLossPct.toFixed(2)}%)
@@ -390,6 +424,11 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                           : styles.holdingXirrValueNegative
                       }
                     >
+                      {xirrRank.has(h.id) && (
+                        <span className={styles.medalBadge} title={`#${xirrRank.get(h.id)} by XIRR`}>
+                          {medalEmoji[xirrRank.get(h.id)! - 1]}
+                        </span>
+                      )}
                       {formatPct(fundXirrValue)}
                     </p>
                   </div>

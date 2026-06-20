@@ -478,6 +478,13 @@
   opacity: 0.85;
 }
 
+.medalBadge {
+  display: inline-block;
+  margin-right: 5px;
+  font-size: 13px;
+  font-style: normal;
+}
+
 .holdingXirrValue {
   font-size: 13.5px;
   color: var(--ink-faint);
