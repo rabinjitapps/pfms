@@ -46,6 +46,35 @@ export async function DELETE(
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
+  // If this is a BUY, make sure removing it wouldn't drive total units
+  // negative — i.e. a later SELL already depends on these units.
+  const { data: allTxns, error: allTxnsErr } = await supabaseAdmin
+    .from('transactions')
+    .select('id, type, units')
+    .eq('holding_id', transaction.holding_id);
+
+  if (allTxnsErr) {
+    console.error('Failed to fetch transactions for delete check:', allTxnsErr);
+    return NextResponse.json({ error: 'Could not verify this deletion' }, { status: 500 });
+  }
+
+  const remaining = (allTxns ?? []).filter((t) => t.id !== id);
+  const resultingUnits = remaining.reduce(
+    (sum, t) => sum + (t.type === 'BUY' ? Number(t.units) : -Number(t.units)),
+    0
+  );
+
+  const EPSILON = 0.0001;
+  if (resultingUnits < -EPSILON) {
+    return NextResponse.json(
+      {
+        error:
+          'Deleting this would leave a SELL with no matching units — delete the later SELL transaction first.',
+      },
+      { status: 400 }
+    );
+  }
+
   const { error } = await supabaseAdmin.from('transactions').delete().eq('id', id);
 
   if (error) {
