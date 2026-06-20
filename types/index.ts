@@ -84,9 +84,11 @@ export interface ExpenseEntry {
 export interface ExpenseSummary {
   month: string; // YYYY-MM, the month this summary reflects
   availableMonths: string[]; // YYYY-MM[], sorted ascending — months with at least one entry, plus the current month
+  carryForward: number; // running balance brought in from all prior months (can be negative)
   totalInflow: number;
   totalOutflow: number;
-  net: number;
+  net: number; // this month's inflow minus outflow only (unchanged meaning)
+  netWithCarryForward: number; // carryForward + net — the running balance leaving this month
   categories: ExpenseCategory[];
   entries: ExpenseEntry[];
 }
