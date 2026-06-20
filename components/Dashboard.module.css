@@ -529,6 +529,93 @@
 }
 
 /* ----------------------------------------------------------------
+   Monthly cash flow table — inflow (buy) / outflow (sell) per month
+   ---------------------------------------------------------------- */
+.monthlyFlowSection {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 26px 28px 10px;
+  margin-top: 30px;
+}
+
+.monthlyFlowHeader {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.4fr) 1fr 1fr 1fr;
+  column-gap: 18px;
+  padding: 0 0 10px;
+  border-bottom: 1.5px solid var(--ink);
+  margin-bottom: 4px;
+}
+
+.monthlyFlowHeaderCell {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brass);
+  text-align: right;
+}
+
+.monthlyFlowHeaderCell:first-child {
+  text-align: left;
+}
+
+.monthlyFlowRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.4fr) 1fr 1fr 1fr;
+  column-gap: 18px;
+  align-items: baseline;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.monthlyFlowRow:last-of-type {
+  border-bottom: none;
+}
+
+.monthlyFlowMonth {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.monthlyFlowInflow {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--ledger-green);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.monthlyFlowOutflow {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--brick);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.monthlyFlowNetPositive {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ledger-green);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.monthlyFlowNetNegative {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--brick);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------------
    Mobile breakpoint — phones and small tablets (<= 640px)
    ---------------------------------------------------------------- */
 @media (max-width: 640px) {
@@ -664,6 +751,58 @@
   .removeBtn {
     top: 14px;
     right: 14px;
+  }
+
+  .monthlyFlowSection {
+    padding: 20px 16px 6px;
+  }
+
+  .monthlyFlowHeader {
+    display: none;
+  }
+
+  .monthlyFlowRow {
+    grid-template-columns: 1fr;
+    row-gap: 6px;
+    padding: 14px 0;
+  }
+
+  .monthlyFlowInflow,
+  .monthlyFlowOutflow,
+  .monthlyFlowNetPositive,
+  .monthlyFlowNetNegative {
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .monthlyFlowInflow::before {
+    content: 'Inflow (buy)';
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .monthlyFlowOutflow::before {
+    content: 'Outflow (sell)';
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .monthlyFlowNetPositive::before,
+  .monthlyFlowNetNegative::before {
+    content: 'Net';
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 400;
   }
 }
 

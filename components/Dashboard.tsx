@@ -73,6 +73,41 @@ function holdingCashFlows(h: HoldingSummary, today: string): CashFlow[] {
   return flows;
 }
 
+interface MonthlyFlow {
+  month: string; // YYYY-MM
+  inflow: number; // total BUY amount across all funds
+  outflow: number; // total SELL amount across all funds
+  net: number;
+}
+
+function monthlyFlowsAcrossPortfolio(portfolio: PortfolioSummary | null): MonthlyFlow[] {
+  if (!portfolio) return [];
+  const byMonth = new Map<string, { inflow: number; outflow: number }>();
+
+  for (const h of portfolio.holdings) {
+    for (const t of h.transactions) {
+      const month = t.date.slice(0, 7); // YYYY-MM
+      const entry = byMonth.get(month) ?? { inflow: 0, outflow: 0 };
+      if (t.type === 'BUY') {
+        entry.inflow += Number(t.amount);
+      } else {
+        entry.outflow += Number(t.amount);
+      }
+      byMonth.set(month, entry);
+    }
+  }
+
+  return Array.from(byMonth.entries())
+    .map(([month, { inflow, outflow }]) => ({ month, inflow, outflow, net: inflow - outflow }))
+    .sort((a, b) => (a.month < b.month ? 1 : -1)); // newest first
+}
+
+function formatMonthLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number);
+  const d = new Date(year, m - 1, 1);
+  return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
 export default function Dashboard({ displayName }: { displayName: string }) {
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -155,6 +190,8 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     const allFlows = portfolio.holdings.flatMap((h) => holdingCashFlows(h, today));
     return xirr(allFlows);
   }, [portfolio, today]);
+
+  const monthlyFlows = useMemo(() => monthlyFlowsAcrossPortfolio(portfolio), [portfolio]);
 
   if (loading) {
     return (
@@ -341,6 +378,35 @@ export default function Dashboard({ displayName }: { displayName: string }) {
               );
             })}
           </div>
+        )}
+
+        {monthlyFlows.length > 0 && (
+          <section className={styles.monthlyFlowSection}>
+            <p className={styles.summaryHeading}>Monthly cash flow &middot; all funds</p>
+            <div className={styles.monthlyFlowHeader}>
+              <span className={styles.monthlyFlowHeaderCell}>Month</span>
+              <span className={styles.monthlyFlowHeaderCell}>Inflow (buy)</span>
+              <span className={styles.monthlyFlowHeaderCell}>Outflow (sell)</span>
+              <span className={styles.monthlyFlowHeaderCell}>Net</span>
+            </div>
+            {monthlyFlows.map((m) => {
+              const netPositive = m.net >= 0;
+              return (
+                <div key={m.month} className={styles.monthlyFlowRow}>
+                  <span className={styles.monthlyFlowMonth}>{formatMonthLabel(m.month)}</span>
+                  <span className={styles.monthlyFlowInflow}>
+                    {m.inflow > 0 ? `₹${formatINR(m.inflow)}` : '—'}
+                  </span>
+                  <span className={styles.monthlyFlowOutflow}>
+                    {m.outflow > 0 ? `₹${formatINR(m.outflow)}` : '—'}
+                  </span>
+                  <span className={netPositive ? styles.monthlyFlowNetPositive : styles.monthlyFlowNetNegative}>
+                    {netPositive ? '+' : ''}₹{formatINR(m.net)}
+                  </span>
+                </div>
+              );
+            })}
+          </section>
         )}
       </main>
 
