@@ -7,6 +7,7 @@ import { xirr, CashFlow } from '@/lib/xirr';
 import AddHoldingModal from './AddHoldingModal';
 import TransactionModal from './TransactionModal';
 import PageNav from './PageNav';
+import YearSwitcher from './YearSwitcher';
 import styles from './Dashboard.module.css';
 
 function formatINR(n: number): string {
@@ -145,6 +146,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState('');
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -222,13 +224,34 @@ export default function Dashboard({ displayName }: { displayName: string }) {
 
   const monthlyFlows = useMemo(() => monthlyFlowsAcrossPortfolio(portfolio), [portfolio]);
 
-  // Medal rankings (top 3) for active holdings only — a fully exited (0-unit)
-  // fund has no meaningful "current" performance to rank against the rest.
+  const availableYears = useMemo(() => {
+    const years = new Set(monthlyFlows.map((m) => Number(m.month.slice(0, 4))));
+    years.add(new Date(today).getFullYear());
+    return Array.from(years).sort((a, b) => a - b);
+  }, [monthlyFlows, today]);
+
+  // Default to the most recent year that actually has activity (or the
+  // current year if there's none yet) once the portfolio first loads.
+  useEffect(() => {
+    if (selectedYear === null && availableYears.length > 0) {
+      setSelectedYear(availableYears[availableYears.length - 1]);
+    }
+  }, [availableYears, selectedYear]);
+
+  const yearFilteredFlows = useMemo(() => {
+    if (selectedYear === null) return monthlyFlows;
+    return monthlyFlows.filter((m) => Number(m.month.slice(0, 4)) === selectedYear);
+  }, [monthlyFlows, selectedYear]);
+
+  // Medal rankings (top 3) for genuinely active holdings only — a fully
+  // exited (0-unit) fund has no meaningful "current" performance to rank,
+  // and a fund with negative units is a data error (a sell exceeded what
+  // was bought), not a real position, so it must never win a medal either.
   const xirrRank = useMemo(() => {
     const map = new Map<string, number>();
     if (!portfolio) return map;
     const ranked = portfolio.holdings
-      .filter((h) => Math.abs(h.totalUnits) > 0.0001)
+      .filter((h) => h.totalUnits > 0.0001)
       .map((h) => ({ id: h.id, value: fundXirr.get(h.id) }))
       .filter((r): r is { id: string; value: number } => r.value !== null && r.value !== undefined)
       .sort((a, b) => b.value - a.value)
@@ -241,7 +264,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     const map = new Map<string, number>();
     if (!portfolio) return map;
     const ranked = portfolio.holdings
-      .filter((h) => Math.abs(h.totalUnits) > 0.0001)
+      .filter((h) => h.totalUnits > 0.0001)
       .map((h) => ({ id: h.id, value: h.gainLossPct }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 3);
@@ -450,14 +473,23 @@ export default function Dashboard({ displayName }: { displayName: string }) {
 
         {monthlyFlows.length > 0 && (
           <section className={styles.monthlyFlowSection}>
-            <p className={styles.summaryHeading}>Monthly cash flow &middot; all funds</p>
-            <div className={styles.monthlyFlowHeader}>
-              <span className={styles.monthlyFlowHeaderCell}>Month</span>
-              <span className={styles.monthlyFlowHeaderCell}>Inflow (buy)</span>
-              <span className={styles.monthlyFlowHeaderCell}>Outflow (sell)</span>
-              <span className={styles.monthlyFlowHeaderCell}>Net</span>
+            <div className={styles.monthlyFlowSectionHeader}>
+              <p className={styles.summaryHeading}>Monthly cash flow &middot; all funds</p>
+              {selectedYear !== null && (
+                <YearSwitcher year={selectedYear} availableYears={availableYears} onChange={setSelectedYear} />
+              )}
             </div>
-            {monthlyFlows.map((m) => {
+            {yearFilteredFlows.length === 0 ? (
+              <p className={styles.monthlyFlowEmpty}>No buy/sell activity in {selectedYear}.</p>
+            ) : (
+              <>
+                <div className={styles.monthlyFlowHeader}>
+                  <span className={styles.monthlyFlowHeaderCell}>Month</span>
+                  <span className={styles.monthlyFlowHeaderCell}>Inflow (buy)</span>
+                  <span className={styles.monthlyFlowHeaderCell}>Outflow (sell)</span>
+                  <span className={styles.monthlyFlowHeaderCell}>Net</span>
+                </div>
+                {yearFilteredFlows.map((m) => {
               const netPositive = m.net >= 0;
               const expanded = expandedMonth === m.month;
               return (
@@ -508,7 +540,9 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                   )}
                 </div>
               );
-            })}
+                })}
+              </>
+            )}
           </section>
         )}
       </main>

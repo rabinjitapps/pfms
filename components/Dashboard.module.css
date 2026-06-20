@@ -546,6 +546,24 @@
   margin-top: 30px;
 }
 
+.monthlyFlowSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.monthlyFlowSectionHeader .summaryHeading {
+  margin-bottom: 0;
+}
+
+.monthlyFlowEmpty {
+  font-size: 13.5px;
+  color: var(--ink-faint);
+  padding: 18px 0 24px;
+}
+
 .monthlyFlowHeader {
   display: grid;
   grid-template-columns: minmax(120px, 1.4fr) 1fr 1fr 1fr;
