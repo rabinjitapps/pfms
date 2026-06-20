@@ -269,6 +269,12 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                 >
                   <div className={styles.holdingMain}>
                     <p className={styles.holdingName}>{h.fund.name}</p>
+                    {h.totalUnits < -0.0001 && (
+                      <p className={styles.holdingWarning}>
+                        ⚠ Units gone negative ({h.totalUnits.toFixed(4)}) — a sell exceeded what
+                        was held. Open History and delete the bad transaction.
+                      </p>
+                    )}
                     <p className={styles.holdingMeta}>
                       {h.totalUnits.toLocaleString('en-IN', { maximumFractionDigits: 4 })} units
                       {' · NAV ₹'}{(h.fund.latest_nav ?? 0).toFixed(2)}

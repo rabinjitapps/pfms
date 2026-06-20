@@ -401,6 +401,17 @@
   font-family: var(--font-mono);
 }
 
+.holdingWarning {
+  font-size: 12px;
+  color: var(--brick);
+  background: var(--brick-soft);
+  margin: 0 0 6px;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
 .holdingMetaSecondary {
   font-size: 12px;
   color: var(--ink-faint);
