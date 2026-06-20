@@ -18,6 +18,11 @@ function formatPct(n: number | null): string {
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
 }
 
+function formatStatementDate(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 function earliestTransactionDate(h: HoldingSummary): string | null {
   if (h.transactions.length === 0) return null;
   return h.transactions.reduce((min, t) => (t.date < min ? t.date : min), h.transactions[0].date);
@@ -153,7 +158,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   if (loading) {
     return (
       <div className={styles.page}>
-        <p className={styles.loadingText}>Loading your Funds…</p>
+        <p className={styles.loadingText}>Loading your funds…</p>
       </div>
     );
   }
@@ -163,7 +168,8 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
-        <div>
+        <div className={styles.brandBlock}>
+          <span className={styles.eyebrow}>Statement &middot; as of {formatStatementDate(today)}</span>
           <h1 className={styles.wordmark}>PFMS Tracker</h1>
         </div>
         <div className={styles.topbarRight}>
@@ -179,10 +185,13 @@ export default function Dashboard({ displayName }: { displayName: string }) {
 
         {portfolio && (
           <section className={styles.summaryCard}>
+            <p className={styles.summaryHeading}>Account summary</p>
             <div className={styles.summaryGrid}>
               <div>
                 <p className={styles.summaryLabel}>Current value</p>
-                <p className={styles.summaryValue}>₹{formatINR(portfolio.currentValue)}</p>
+                <div className={styles.totalRule}>
+                  <p className={styles.summaryValue}>₹{formatINR(portfolio.currentValue)}</p>
+                </div>
               </div>
               <div>
                 <p className={styles.summaryLabel}>Invested</p>
@@ -240,9 +249,18 @@ export default function Dashboard({ displayName }: { displayName: string }) {
           </div>
         ) : (
           <div className={styles.holdingsList}>
+            <div className={styles.ledgerHeader}>
+              <span className={styles.ledgerHeaderCell}>Holding</span>
+              <span className={styles.ledgerHeaderCell}>Invested</span>
+              <span className={styles.ledgerHeaderCell}>Current value</span>
+              <span className={styles.ledgerHeaderCell}>Gain / loss</span>
+              <span className={styles.ledgerHeaderCell}>XIRR</span>
+            </div>
+
             {portfolio?.holdings.map((h) => {
               const positive = h.gainLoss >= 0;
               const fundXirrValue = fundXirr.get(h.id) ?? null;
+              const age = fundAge(earliestTransactionDate(h), today);
               return (
                 <button
                   key={h.id}
@@ -258,39 +276,48 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                         <span className={styles.holdingDate}> as of {h.fund.latest_nav_date}</span>
                       )}
                     </p>
-                    <p className={styles.holdingMetaSecondary}>
-                      Invested ₹{formatINR(h.investedAmount)}
-                      {(() => {
-                        const age = fundAge(earliestTransactionDate(h), today);
-                        return age ? (
-                          <span className={styles.holdingDate}>
-                            {' · Held '}{age.label}{' ('}{age.days}{' days)'}
-                          </span>
-                        ) : null;
-                      })()}
-                    </p>
+                    {age && (
+                      <p className={styles.holdingMetaSecondary}>
+                        Held {age.label} <span className={styles.holdingDate}>({age.days} days)</span>
+                      </p>
+                    )}
                   </div>
-                  <div className={styles.holdingFigures}>
+
+                  <div className={styles.figureCell}>
+                    <span className={styles.figureLabel}>Invested</span>
+                    <p className={styles.figureInvested}>₹{formatINR(h.investedAmount)}</p>
+                  </div>
+
+                  <div className={styles.figureCell}>
+                    <span className={styles.figureLabel}>Current value</span>
                     <p className={styles.holdingValue}>₹{formatINR(h.currentValue)}</p>
+                  </div>
+
+                  <div className={styles.figureCell}>
+                    <span className={styles.figureLabel}>Gain / loss</span>
                     <p className={positive ? styles.holdingGainPositive : styles.holdingGainNegative}>
-                      {positive ? '+' : ''}₹{formatINR(h.gainLoss)} ({positive ? '+' : ''}
-                      {h.gainLossPct.toFixed(2)}%)
-                    </p>
-                    <p className={styles.holdingXirr}>
-                      XIRR{' '}
-                      <span
-                        className={
-                          fundXirrValue === null
-                            ? styles.holdingXirrValue
-                            : fundXirrValue >= 0
-                            ? styles.holdingXirrValuePositive
-                            : styles.holdingXirrValueNegative
-                        }
-                      >
-                        {formatPct(fundXirrValue)}
+                      {positive ? '+' : ''}₹{formatINR(h.gainLoss)}
+                      <span className={styles.gainPctSmall}>
+                        ({positive ? '+' : ''}{h.gainLossPct.toFixed(2)}%)
                       </span>
                     </p>
                   </div>
+
+                  <div className={styles.figureCell}>
+                    <span className={styles.figureLabel}>XIRR</span>
+                    <p
+                      className={
+                        fundXirrValue === null
+                          ? styles.holdingXirrValue
+                          : fundXirrValue >= 0
+                          ? styles.holdingXirrValuePositive
+                          : styles.holdingXirrValueNegative
+                      }
+                    >
+                      {formatPct(fundXirrValue)}
+                    </p>
+                  </div>
+
                   <span
                     className={styles.removeBtn}
                     onClick={(e) => {
