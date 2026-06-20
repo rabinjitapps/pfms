@@ -37,6 +37,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Holding not found' }, { status: 404 });
   }
 
+  // For a SELL, make sure there are actually enough units to sell. Without
+  // this check, an over-sell drives totalUnits negative and the fund
+  // silently vanishes from the dashboard's holdings list.
+  if (type === 'SELL') {
+    const { data: existingTxns, error: txnFetchErr } = await supabaseAdmin
+      .from('transactions')
+      .select('type, units')
+      .eq('holding_id', holdingId);
+
+    if (txnFetchErr) {
+      console.error('Failed to fetch existing transactions:', txnFetchErr);
+      return NextResponse.json({ error: 'Could not verify available units' }, { status: 500 });
+    }
+
+    const heldUnits = (existingTxns ?? []).reduce(
+      (sum, t) => sum + (t.type === 'BUY' ? Number(t.units) : -Number(t.units)),
+      0
+    );
+
+    const EPSILON = 0.0001;
+    if (unitsNum > heldUnits + EPSILON) {
+      return NextResponse.json(
+        {
+          error:
+            heldUnits > EPSILON
+              ? `You only hold ${heldUnits.toFixed(4)} units of this fund — cannot sell ${unitsNum.toFixed(4)}.`
+              : 'You hold no units of this fund to sell.',
+        },
+        { status: 400 }
+      );
+    }
+  }
+
   const amount = Math.round(unitsNum * navNum * 100) / 100;
 
   const { data: transaction, error } = await supabaseAdmin
