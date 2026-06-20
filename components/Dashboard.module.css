@@ -567,11 +567,23 @@
   grid-template-columns: minmax(120px, 1.4fr) 1fr 1fr 1fr;
   column-gap: 18px;
   align-items: baseline;
+  width: 100%;
   padding: 13px 0;
   border-bottom: 1px solid var(--hairline);
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.monthlyFlowRow:last-of-type {
+.monthlyFlowRow:hover {
+  background: var(--brass-soft);
+}
+
+.monthlyFlowSection > div:last-of-type .monthlyFlowRow {
   border-bottom: none;
 }
 
@@ -579,6 +591,16 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.monthlyFlowCaret {
+  font-size: 10px;
+  color: var(--brass);
+  width: 10px;
+  display: inline-block;
 }
 
 .monthlyFlowInflow {
@@ -613,6 +635,29 @@
   color: var(--brick);
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.monthlyFlowBreakdown {
+  background: var(--paper);
+  border-bottom: 1px solid var(--hairline);
+  padding: 4px 0 8px 24px;
+}
+
+.monthlyFlowSection > div:last-of-type .monthlyFlowBreakdown {
+  border-bottom: none;
+}
+
+.monthlyFlowBreakdownRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.4fr) 1fr 1fr 1fr;
+  column-gap: 18px;
+  align-items: baseline;
+  padding: 8px 0;
+}
+
+.monthlyFlowBreakdownFund {
+  font-size: 12.5px;
+  color: var(--ink-soft);
 }
 
 /* ----------------------------------------------------------------
@@ -803,6 +848,22 @@
     text-transform: uppercase;
     color: var(--ink-faint);
     font-weight: 400;
+  }
+
+  .monthlyFlowBreakdown {
+    padding: 4px 0 8px 12px;
+  }
+
+  .monthlyFlowBreakdownRow {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .monthlyFlowBreakdownFund {
+    font-weight: 600;
+    margin-bottom: 2px;
   }
 }
 

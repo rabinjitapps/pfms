@@ -73,32 +73,60 @@ function holdingCashFlows(h: HoldingSummary, today: string): CashFlow[] {
   return flows;
 }
 
+interface FundFlowBreakdown {
+  fundId: string;
+  fundName: string;
+  inflow: number;
+  outflow: number;
+}
+
 interface MonthlyFlow {
   month: string; // YYYY-MM
   inflow: number; // total BUY amount across all funds
   outflow: number; // total SELL amount across all funds
   net: number;
+  byFund: FundFlowBreakdown[]; // sorted by total activity, descending
 }
 
 function monthlyFlowsAcrossPortfolio(portfolio: PortfolioSummary | null): MonthlyFlow[] {
   if (!portfolio) return [];
-  const byMonth = new Map<string, { inflow: number; outflow: number }>();
+  const byMonth = new Map<
+    string,
+    { inflow: number; outflow: number; byFund: Map<string, FundFlowBreakdown> }
+  >();
 
   for (const h of portfolio.holdings) {
     for (const t of h.transactions) {
       const month = t.date.slice(0, 7); // YYYY-MM
-      const entry = byMonth.get(month) ?? { inflow: 0, outflow: 0 };
+      const monthEntry = byMonth.get(month) ?? { inflow: 0, outflow: 0, byFund: new Map() };
+
+      const fundEntry =
+        monthEntry.byFund.get(h.fund.id) ??
+        { fundId: h.fund.id, fundName: h.fund.name, inflow: 0, outflow: 0 };
+
       if (t.type === 'BUY') {
-        entry.inflow += Number(t.amount);
+        monthEntry.inflow += Number(t.amount);
+        fundEntry.inflow += Number(t.amount);
       } else {
-        entry.outflow += Number(t.amount);
+        monthEntry.outflow += Number(t.amount);
+        fundEntry.outflow += Number(t.amount);
       }
-      byMonth.set(month, entry);
+
+      monthEntry.byFund.set(h.fund.id, fundEntry);
+      byMonth.set(month, monthEntry);
     }
   }
 
   return Array.from(byMonth.entries())
-    .map(([month, { inflow, outflow }]) => ({ month, inflow, outflow, net: inflow - outflow }))
+    .map(([month, { inflow, outflow, byFund }]) => ({
+      month,
+      inflow,
+      outflow,
+      net: inflow - outflow,
+      byFund: Array.from(byFund.values()).sort(
+        (a, b) => b.inflow + b.outflow - (a.inflow + a.outflow)
+      ),
+    }))
     .sort((a, b) => (a.month < b.month ? 1 : -1)); // newest first
 }
 
@@ -116,6 +144,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const [activeHolding, setActiveHolding] = useState<HoldingSummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState('');
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -391,18 +420,53 @@ export default function Dashboard({ displayName }: { displayName: string }) {
             </div>
             {monthlyFlows.map((m) => {
               const netPositive = m.net >= 0;
+              const expanded = expandedMonth === m.month;
               return (
-                <div key={m.month} className={styles.monthlyFlowRow}>
-                  <span className={styles.monthlyFlowMonth}>{formatMonthLabel(m.month)}</span>
-                  <span className={styles.monthlyFlowInflow}>
-                    {m.inflow > 0 ? `₹${formatINR(m.inflow)}` : '—'}
-                  </span>
-                  <span className={styles.monthlyFlowOutflow}>
-                    {m.outflow > 0 ? `₹${formatINR(m.outflow)}` : '—'}
-                  </span>
-                  <span className={netPositive ? styles.monthlyFlowNetPositive : styles.monthlyFlowNetNegative}>
-                    {netPositive ? '+' : ''}₹{formatINR(m.net)}
-                  </span>
+                <div key={m.month}>
+                  <button
+                    className={styles.monthlyFlowRow}
+                    onClick={() => setExpandedMonth(expanded ? null : m.month)}
+                    aria-expanded={expanded}
+                  >
+                    <span className={styles.monthlyFlowMonth}>
+                      <span className={styles.monthlyFlowCaret}>{expanded ? '▾' : '▸'}</span>
+                      {formatMonthLabel(m.month)}
+                    </span>
+                    <span className={styles.monthlyFlowInflow}>
+                      {m.inflow > 0 ? `₹${formatINR(m.inflow)}` : '—'}
+                    </span>
+                    <span className={styles.monthlyFlowOutflow}>
+                      {m.outflow > 0 ? `₹${formatINR(m.outflow)}` : '—'}
+                    </span>
+                    <span className={netPositive ? styles.monthlyFlowNetPositive : styles.monthlyFlowNetNegative}>
+                      {netPositive ? '+' : ''}₹{formatINR(m.net)}
+                    </span>
+                  </button>
+
+                  {expanded && (
+                    <div className={styles.monthlyFlowBreakdown}>
+                      {m.byFund.map((f) => (
+                        <div key={f.fundId} className={styles.monthlyFlowBreakdownRow}>
+                          <span className={styles.monthlyFlowBreakdownFund}>{f.fundName}</span>
+                          <span className={styles.monthlyFlowInflow}>
+                            {f.inflow > 0 ? `₹${formatINR(f.inflow)}` : '—'}
+                          </span>
+                          <span className={styles.monthlyFlowOutflow}>
+                            {f.outflow > 0 ? `₹${formatINR(f.outflow)}` : '—'}
+                          </span>
+                          <span
+                            className={
+                              f.inflow - f.outflow >= 0
+                                ? styles.monthlyFlowNetPositive
+                                : styles.monthlyFlowNetNegative
+                            }
+                          >
+                            {f.inflow - f.outflow >= 0 ? '+' : ''}₹{formatINR(f.inflow - f.outflow)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
