@@ -53,3 +53,38 @@ export interface PortfolioSummary {
   totalGainLossPct: number;
   holdings: HoldingSummary[];
 }
+
+// ----------------------------------------------------------------------
+// Expense tracker
+// ----------------------------------------------------------------------
+
+export type ExpenseCategoryKind = 'INCOME' | 'EXPENSE';
+export type ExpenseDirection = 'INFLOW' | 'OUTFLOW';
+
+export interface ExpenseCategory {
+  id: string;
+  user_id: string;
+  name: string;
+  kind: ExpenseCategoryKind;
+  created_at: string;
+}
+
+export interface ExpenseEntry {
+  id: string;
+  user_id: string;
+  category_id: string;
+  direction: ExpenseDirection;
+  date: string;
+  amount: number;
+  notes: string | null;
+  created_at: string;
+  category: ExpenseCategory;
+}
+
+export interface ExpenseSummary {
+  totalInflow: number;
+  totalOutflow: number;
+  net: number;
+  categories: ExpenseCategory[];
+  entries: ExpenseEntry[];
+}
