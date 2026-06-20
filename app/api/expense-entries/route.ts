@@ -3,13 +3,32 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getCurrentUserId } from '@/lib/session';
 import { ExpenseEntry, ExpenseSummary } from '@/types';
 
-export async function GET() {
+function currentMonth(): string {
+  return new Date().toISOString().slice(0, 7); // YYYY-MM
+}
+
+function monthBounds(month: string): { start: string; end: string } {
+  const [yearStr, monthStr] = month.split('-');
+  const year = Number(yearStr);
+  const monthIdx = Number(monthStr) - 1; // 0-indexed
+  const start = `${month}-01`;
+  // Day 0 of the following month = last day of this month.
+  const lastDay = new Date(year, monthIdx + 1, 0).getDate();
+  const end = `${month}-${String(lastDay).padStart(2, '0')}`;
+  return { start, end };
+}
+
+export async function GET(req: NextRequest) {
   const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const [categoriesRes, entriesRes] = await Promise.all([
+  const monthParam = req.nextUrl.searchParams.get('month');
+  const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : currentMonth();
+  const { start, end } = monthBounds(month);
+
+  const [categoriesRes, entriesRes, monthsRes] = await Promise.all([
     supabaseAdmin
       .from('expense_categories')
       .select('*')
@@ -19,8 +38,18 @@ export async function GET() {
       .from('expense_entries')
       .select('*, category:expense_categories(*)')
       .eq('user_id', userId)
+      .gte('date', start)
+      .lte('date', end)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false }),
+    // Lightweight pass over just the date column, to know which months
+    // actually have entries (used to keep the month switcher useful even
+    // when there's only data in a couple of months).
+    supabaseAdmin
+      .from('expense_entries')
+      .select('date')
+      .eq('user_id', userId)
+      .order('date', { ascending: true }),
   ]);
 
   if (categoriesRes.error) {
@@ -29,6 +58,10 @@ export async function GET() {
   }
   if (entriesRes.error) {
     console.error('Failed to fetch expense entries:', entriesRes.error);
+    return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 });
+  }
+  if (monthsRes.error) {
+    console.error('Failed to fetch expense entry months:', monthsRes.error);
     return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 });
   }
 
@@ -41,7 +74,19 @@ export async function GET() {
     .filter((e) => e.direction === 'OUTFLOW')
     .reduce((sum, e) => sum + Number(e.amount), 0);
 
+  const availableMonths = Array.from(
+    new Set((monthsRes.data ?? []).map((r) => (r.date as string).slice(0, 7)))
+  );
+  // Always include the current month, so "today" is always reachable
+  // even before the very first entry is logged.
+  if (!availableMonths.includes(currentMonth())) {
+    availableMonths.push(currentMonth());
+  }
+  availableMonths.sort();
+
   const summary: ExpenseSummary = {
+    month,
+    availableMonths,
     totalInflow,
     totalOutflow,
     net: totalInflow - totalOutflow,
