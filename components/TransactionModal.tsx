@@ -161,6 +161,29 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
+  // Mirrors the server's delete guard so the UI can tell you up front which
+  // transactions are actually deletable right now, instead of you finding
+  // out by trial and error. A delete is allowed if it doesn't push units
+  // negative, or — when units are already negative from a data mistake —
+  // if it's a genuine step toward fixing that (not toward making it worse).
+  const EPSILON = 0.0001;
+  const currentUnits = holding.transactions.reduce(
+    (sum, t) => sum + (t.type === 'BUY' ? Number(t.units) : -Number(t.units)),
+    0
+  );
+  const wasAlreadyNegative = currentUnits < -EPSILON;
+
+  function canDelete(txnId: string): boolean {
+    const remaining = holding.transactions.filter((t) => t.id !== txnId);
+    const resultingUnits = remaining.reduce(
+      (sum, t) => sum + (t.type === 'BUY' ? Number(t.units) : -Number(t.units)),
+      0
+    );
+    if (resultingUnits >= -EPSILON) return true;
+    if (!wasAlreadyNegative) return false;
+    return resultingUnits > currentUnits + EPSILON;
+  }
+
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -368,29 +391,45 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
         {tab === 'history' && (
           <div>
             {error && <p style={styles.error}>{error}</p>}
+            {wasAlreadyNegative && (
+              <p style={styles.negativeBanner}>
+                ⚠ This fund&apos;s units have gone negative ({currentUnits.toFixed(4)}) — one or
+                more SELL transactions exceed what was actually bought. Delete the extra SELL
+                transactions below (marked &ldquo;safe to delete&rdquo;) until the units are zero
+                or positive again.
+              </p>
+            )}
             {sortedTxns.length === 0 ? (
               <p style={styles.hint}>No transactions recorded yet.</p>
             ) : (
               <div style={styles.historyList}>
-                {sortedTxns.map((t) => (
-                  <div key={t.id} style={styles.historyRow}>
-                    <div>
-                      <span style={t.type === 'BUY' ? styles.tagBuy : styles.tagSell}>
-                        {t.type}
-                      </span>
-                      <span style={styles.historyDate}>{t.date}</span>
+                {sortedTxns.map((t) => {
+                  const deletable = canDelete(t.id);
+                  return (
+                    <div key={t.id} style={styles.historyRow}>
+                      <div>
+                        <span style={t.type === 'BUY' ? styles.tagBuy : styles.tagSell}>
+                          {t.type}
+                        </span>
+                        <span style={styles.historyDate}>{t.date}</span>
+                      </div>
+                      <div style={styles.historyDetail}>
+                        {Number(t.units).toLocaleString('en-IN', { maximumFractionDigits: 4 })} units
+                        {' @ '}₹{Number(t.nav).toFixed(2)}
+                        {' = '}₹{Number(t.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                      </div>
+                      {t.notes && <div style={styles.historyNotes}>{t.notes}</div>}
+                      {wasAlreadyNegative && (
+                        <div style={deletable ? styles.deletableHint : styles.notDeletableHint}>
+                          {deletable ? '✓ safe to delete' : '✗ would not help — try a different one'}
+                        </div>
+                      )}
+                      <button style={styles.deleteBtn} onClick={() => handleDeleteTransaction(t.id)}>
+                        Delete
+                      </button>
                     </div>
-                    <div style={styles.historyDetail}>
-                      {Number(t.units).toLocaleString('en-IN', { maximumFractionDigits: 4 })} units
-                      {' @ '}₹{Number(t.nav).toFixed(2)}
-                      {' = '}₹{Number(t.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                    </div>
-                    {t.notes && <div style={styles.historyNotes}>{t.notes}</div>}
-                    <button style={styles.deleteBtn} onClick={() => handleDeleteTransaction(t.id)}>
-                      Delete
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <div style={styles.actions}>
@@ -594,6 +633,28 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '13px',
     color: 'var(--brick)',
     margin: '0 0 12px',
+  },
+  negativeBanner: {
+    fontSize: '13px',
+    color: 'var(--brick)',
+    background: 'var(--brick-soft)',
+    border: '1px solid var(--brick)',
+    borderRadius: '4px',
+    padding: '12px 14px',
+    lineHeight: 1.5,
+    margin: '0 0 16px',
+  },
+  deletableHint: {
+    fontSize: '11.5px',
+    fontWeight: 600,
+    color: 'var(--ledger-green)',
+    marginTop: '6px',
+  },
+  notDeletableHint: {
+    fontSize: '11.5px',
+    fontWeight: 500,
+    color: 'var(--ink-faint)',
+    marginTop: '6px',
   },
   actions: {
     display: 'flex',
