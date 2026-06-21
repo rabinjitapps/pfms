@@ -127,7 +127,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   }
 
   const netPositive = (summary?.net ?? 0) >= 0;
-  const broughtForwardPositive = (summary?.openingBalance ?? 0) >= 0;
+  const broughtForwardPositive = (summary?.carryForward ?? 0) >= 0;
 
   return (
     <AppShell active="expenses" displayName={displayName}>
@@ -155,7 +155,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
               <div className={styles.broughtForwardRow}>
                 <span className={styles.summaryLabel}>Brought forward</span>
                 <span className={broughtForwardPositive ? styles.broughtForwardPositive : styles.broughtForwardNegative}>
-                  {broughtForwardPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.openingBalance))}
+                  {broughtForwardPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.carryForward))}
                 </span>
             </div>
 
