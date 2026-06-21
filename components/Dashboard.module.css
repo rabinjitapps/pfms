@@ -13,30 +13,15 @@
 }
 
 /* ----------------------------------------------------------------
-   Letterhead
+   In-page header (brand + nav now live in the sidebar)
    ---------------------------------------------------------------- */
-.topbar {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 22px 32px 0;
-  border-bottom: 1.5px solid var(--ink);
-  background: var(--paper-raised);
-}
-
-.topbarMain {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 18px;
-}
-
-.brandBlock {
+.pageHeader {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 0;
+  padding: 32px 24px 0;
+  max-width: 840px;
+  margin: 0 auto;
 }
 
 .eyebrow {
@@ -49,53 +34,19 @@
   white-space: nowrap;
 }
 
-.wordmark {
+.pageTitle {
   font-family: var(--font-display);
   font-size: 25px;
   font-weight: 600;
   color: var(--ink);
   margin: 0;
   letter-spacing: -0.01em;
-  line-height: 1;
-}
-
-.topbarRight {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-shrink: 0;
-  padding-bottom: 2px;
-}
-
-.greeting {
-  font-size: 13.5px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 36vw;
-}
-
-.signOutBtn {
-  padding: 0;
-  background: none;
-  border: none;
-  border-bottom: 1px solid transparent;
-  font-size: 13px;
-  color: var(--ink-faint);
-  white-space: nowrap;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.signOutBtn:hover {
-  color: var(--brick);
-  border-bottom-color: var(--brick);
 }
 
 .main {
   max-width: 840px;
   margin: 0 auto;
-  padding: 36px 24px 80px;
+  padding: 20px 24px 80px;
 }
 
 .errorBanner {
@@ -478,13 +429,6 @@
   opacity: 0.85;
 }
 
-.medalBadge {
-  display: inline-block;
-  margin-right: 5px;
-  font-size: 13px;
-  font-style: normal;
-}
-
 .holdingXirrValue {
   font-size: 13.5px;
   color: var(--ink-faint);
@@ -536,185 +480,19 @@
 }
 
 /* ----------------------------------------------------------------
-   Monthly cash flow table — inflow (buy) / outflow (sell) per month
-   ---------------------------------------------------------------- */
-.monthlyFlowSection {
-  background: var(--paper-raised);
-  border: 1px solid var(--hairline);
-  border-radius: 4px;
-  padding: 26px 28px 10px;
-  margin-top: 30px;
-}
-
-.monthlyFlowSectionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.monthlyFlowSectionHeader .summaryHeading {
-  margin-bottom: 0;
-}
-
-.monthlyFlowEmpty {
-  font-size: 13.5px;
-  color: var(--ink-faint);
-  padding: 18px 0 24px;
-}
-
-.monthlyFlowHeader {
-  display: grid;
-  grid-template-columns: minmax(120px, 1.4fr) 1fr 1fr 1fr;
-  column-gap: 18px;
-  padding: 0 0 10px;
-  border-bottom: 1.5px solid var(--ink);
-  margin-bottom: 4px;
-}
-
-.monthlyFlowHeaderCell {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--brass);
-  text-align: right;
-}
-
-.monthlyFlowHeaderCell:first-child {
-  text-align: left;
-}
-
-.monthlyFlowRow {
-  display: grid;
-  grid-template-columns: minmax(120px, 1.4fr) 1fr 1fr 1fr;
-  column-gap: 18px;
-  align-items: baseline;
-  width: 100%;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--hairline);
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.monthlyFlowRow:hover {
-  background: var(--brass-soft);
-}
-
-.monthlyFlowSection > div:last-of-type .monthlyFlowRow {
-  border-bottom: none;
-}
-
-.monthlyFlowMonth {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.monthlyFlowCaret {
-  font-size: 10px;
-  color: var(--brass);
-  width: 10px;
-  display: inline-block;
-}
-
-.monthlyFlowInflow {
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  color: var(--ledger-green);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.monthlyFlowOutflow {
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  color: var(--brick);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.monthlyFlowNetPositive {
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ledger-green);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.monthlyFlowNetNegative {
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--brick);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.monthlyFlowBreakdown {
-  background: var(--paper);
-  border-bottom: 1px solid var(--hairline);
-  padding: 4px 0 8px 24px;
-}
-
-.monthlyFlowSection > div:last-of-type .monthlyFlowBreakdown {
-  border-bottom: none;
-}
-
-.monthlyFlowBreakdownRow {
-  display: grid;
-  grid-template-columns: minmax(120px, 1.4fr) 1fr 1fr 1fr;
-  column-gap: 18px;
-  align-items: baseline;
-  padding: 8px 0;
-}
-
-.monthlyFlowBreakdownFund {
-  font-size: 12.5px;
-  color: var(--ink-soft);
-}
-
-/* ----------------------------------------------------------------
    Mobile breakpoint — phones and small tablets (<= 640px)
    ---------------------------------------------------------------- */
 @media (max-width: 640px) {
-  .topbar {
-    padding: 16px 16px 0;
+  .pageHeader {
+    padding: 20px 14px 0;
   }
 
-  .topbarMain {
-    padding-bottom: 14px;
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .wordmark {
+  .pageTitle {
     font-size: 20px;
   }
 
   .eyebrow {
     font-size: 10px;
-  }
-
-  .topbarRight {
-    gap: 10px;
-    padding-bottom: 0;
-  }
-
-  .greeting {
-    max-width: 30vw;
-    font-size: 12.5px;
   }
 
   .main {
@@ -822,81 +600,9 @@
     top: 14px;
     right: 14px;
   }
-
-  .monthlyFlowSection {
-    padding: 20px 16px 6px;
-  }
-
-  .monthlyFlowHeader {
-    display: none;
-  }
-
-  .monthlyFlowRow {
-    grid-template-columns: 1fr;
-    row-gap: 6px;
-    padding: 14px 0;
-  }
-
-  .monthlyFlowInflow,
-  .monthlyFlowOutflow,
-  .monthlyFlowNetPositive,
-  .monthlyFlowNetNegative {
-    text-align: left;
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .monthlyFlowInflow::before {
-    content: 'Inflow (buy)';
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-  }
-
-  .monthlyFlowOutflow::before {
-    content: 'Outflow (sell)';
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-  }
-
-  .monthlyFlowNetPositive::before,
-  .monthlyFlowNetNegative::before {
-    content: 'Net';
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    font-weight: 400;
-  }
-
-  .monthlyFlowBreakdown {
-    padding: 4px 0 8px 12px;
-  }
-
-  .monthlyFlowBreakdownRow {
-    grid-template-columns: 1fr;
-    row-gap: 4px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  .monthlyFlowBreakdownFund {
-    font-weight: 600;
-    margin-bottom: 2px;
-  }
 }
 
 @media (max-width: 380px) {
-  .greeting {
-    display: none;
-  }
-
   .summaryValue,
   .summaryValueSecondary,
   .gainPositive,

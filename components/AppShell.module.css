@@ -1,0 +1,15 @@
+.shell {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.content {
+  margin-left: 232px;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .content {
+    margin-left: 0;
+  }
+}

@@ -13,30 +13,15 @@
 }
 
 /* ----------------------------------------------------------------
-   Letterhead (mirrors Dashboard.module.css)
+   In-page header (brand + nav now live in the sidebar)
    ---------------------------------------------------------------- */
-.topbar {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 22px 32px 0;
-  border-bottom: 1.5px solid var(--ink);
-  background: var(--paper-raised);
-}
-
-.topbarMain {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 18px;
-}
-
-.brandBlock {
+.pageHeader {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 0;
+  padding: 32px 24px 0;
+  max-width: 840px;
+  margin: 0 auto;
 }
 
 .eyebrow {
@@ -49,53 +34,19 @@
   white-space: nowrap;
 }
 
-.wordmark {
+.pageTitle {
   font-family: var(--font-display);
   font-size: 25px;
   font-weight: 600;
   color: var(--ink);
   margin: 0;
   letter-spacing: -0.01em;
-  line-height: 1;
-}
-
-.topbarRight {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-shrink: 0;
-  padding-bottom: 2px;
-}
-
-.greeting {
-  font-size: 13.5px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 36vw;
-}
-
-.signOutBtn {
-  padding: 0;
-  background: none;
-  border: none;
-  border-bottom: 1px solid transparent;
-  font-size: 13px;
-  color: var(--ink-faint);
-  white-space: nowrap;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.signOutBtn:hover {
-  color: var(--brick);
-  border-bottom-color: var(--brick);
 }
 
 .main {
   max-width: 840px;
   margin: 0 auto;
-  padding: 36px 24px 80px;
+  padding: 20px 24px 80px;
 }
 
 .errorBanner {
@@ -126,13 +77,36 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--brass);
-  margin: 0 0 22px;
+  margin: 0 0 18px;
 }
 
-.carryForwardLine {
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin: -10px 0 22px;
+.broughtForwardRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.broughtForwardRow .summaryLabel {
+  margin: 0;
+}
+
+.broughtForwardPositive {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ledger-green);
+  font-variant-numeric: tabular-nums;
+}
+
+.broughtForwardNegative {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--brick);
+  font-variant-numeric: tabular-nums;
 }
 
 .summaryGrid {
@@ -148,15 +122,6 @@
 .summaryGrid > div + div {
   border-left: 1px solid var(--hairline);
   padding-left: 24px;
-}
-
-.summaryGridSecondary {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 24px;
-  margin-top: 26px;
-  padding-top: 20px;
-  border-top: 1px solid var(--hairline);
 }
 
 .summaryLabel {
@@ -222,81 +187,6 @@
   margin: 0;
   word-break: break-word;
   font-variant-numeric: tabular-nums;
-}
-
-/* ----------------------------------------------------------------
-   Filter bar — date range + head dropdowns
-   ---------------------------------------------------------------- */
-.filterBar {
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-  flex-wrap: wrap;
-  background: var(--paper-raised);
-  border: 1px solid var(--hairline);
-  border-radius: 4px;
-  padding: 16px 18px;
-  margin-bottom: 18px;
-}
-
-.filterField {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 130px;
-}
-
-.filterLabel {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.filterInput,
-.filterSelect {
-  padding: 8px 10px;
-  font-size: 13.5px;
-  border: 1px solid var(--hairline);
-  border-radius: 3px;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: inherit;
-}
-
-.filterClearBtn {
-  padding: 9px 14px;
-  background: none;
-  border: 1px solid var(--hairline);
-  border-radius: 3px;
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
-.filterClearBtn:hover {
-  color: var(--brick);
-  border-color: var(--brick);
-}
-
-.filterSummary {
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin: 0 0 18px;
-}
-
-.inflowValueInline {
-  color: var(--ledger-green);
-  font-weight: 600;
-  font-family: var(--font-mono);
-}
-
-.outflowValueInline {
-  color: var(--brick);
-  font-weight: 600;
-  font-family: var(--font-mono);
 }
 
 /* ----------------------------------------------------------------
@@ -467,8 +357,7 @@
   background: var(--brass-soft);
 }
 
-.entryRow:hover .deleteBtn,
-.entryRow:hover .editBtn {
+.entryRow:hover .deleteBtn {
   opacity: 1;
 }
 
@@ -539,32 +428,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.entryActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.editBtn {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  opacity: 0;
-  padding: 4px;
-  transition: color 0.15s ease, opacity 0.15s ease;
-}
-
-.editBtn:hover {
-  color: var(--ledger-green);
-}
-
 .deleteBtn {
   flex-shrink: 0;
   background: none;
@@ -588,32 +451,16 @@
    Mobile breakpoint — phones and small tablets (<= 640px)
    ---------------------------------------------------------------- */
 @media (max-width: 640px) {
-  .topbar {
-    padding: 16px 16px 0;
+  .pageHeader {
+    padding: 20px 14px 0;
   }
 
-  .topbarMain {
-    padding-bottom: 14px;
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
-
-  .wordmark {
+  .pageTitle {
     font-size: 20px;
   }
 
   .eyebrow {
     font-size: 10px;
-  }
-
-  .topbarRight {
-    gap: 10px;
-    padding-bottom: 0;
-  }
-
-  .greeting {
-    max-width: 30vw;
-    font-size: 12.5px;
   }
 
   .main {
@@ -645,20 +492,6 @@
     gap: 10px;
   }
 
-  .filterBar {
-    padding: 14px;
-    gap: 12px;
-  }
-
-  .filterField {
-    min-width: calc(50% - 6px);
-    flex: 1 1 calc(50% - 6px);
-  }
-
-  .filterClearBtn {
-    flex: 1 1 100%;
-  }
-
   .inflowBtn,
   .outflowBtn,
   .secondaryBtn {
@@ -676,17 +509,12 @@
     flex-basis: 100%;
   }
 
-  .deleteBtn,
-  .editBtn {
+  .deleteBtn {
     opacity: 1;
   }
 }
 
 @media (max-width: 380px) {
-  .greeting {
-    display: none;
-  }
-
   .inflowValue,
   .outflowValue,
   .netPositive,

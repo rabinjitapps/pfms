@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { signOut } from 'next-auth/react';
 import { PortfolioSummary, HoldingSummary } from '@/types';
 import { xirr, CashFlow } from '@/lib/xirr';
 import AddHoldingModal from './AddHoldingModal';
 import TransactionModal from './TransactionModal';
-import PageNav from './PageNav';
-import YearSwitcher from './YearSwitcher';
+import AppShell from './AppShell';
 import styles from './Dashboard.module.css';
 
 function formatINR(n: number): string {
@@ -74,69 +72,6 @@ function holdingCashFlows(h: HoldingSummary, today: string): CashFlow[] {
   return flows;
 }
 
-interface FundFlowBreakdown {
-  fundId: string;
-  fundName: string;
-  inflow: number;
-  outflow: number;
-}
-
-interface MonthlyFlow {
-  month: string; // YYYY-MM
-  inflow: number; // total BUY amount across all funds
-  outflow: number; // total SELL amount across all funds
-  net: number;
-  byFund: FundFlowBreakdown[]; // sorted by total activity, descending
-}
-
-function monthlyFlowsAcrossPortfolio(portfolio: PortfolioSummary | null): MonthlyFlow[] {
-  if (!portfolio) return [];
-  const byMonth = new Map<
-    string,
-    { inflow: number; outflow: number; byFund: Map<string, FundFlowBreakdown> }
-  >();
-
-  for (const h of portfolio.holdings) {
-    for (const t of h.transactions) {
-      const month = t.date.slice(0, 7); // YYYY-MM
-      const monthEntry = byMonth.get(month) ?? { inflow: 0, outflow: 0, byFund: new Map() };
-
-      const fundEntry =
-        monthEntry.byFund.get(h.fund.id) ??
-        { fundId: h.fund.id, fundName: h.fund.name, inflow: 0, outflow: 0 };
-
-      if (t.type === 'BUY') {
-        monthEntry.inflow += Number(t.amount);
-        fundEntry.inflow += Number(t.amount);
-      } else {
-        monthEntry.outflow += Number(t.amount);
-        fundEntry.outflow += Number(t.amount);
-      }
-
-      monthEntry.byFund.set(h.fund.id, fundEntry);
-      byMonth.set(month, monthEntry);
-    }
-  }
-
-  return Array.from(byMonth.entries())
-    .map(([month, { inflow, outflow, byFund }]) => ({
-      month,
-      inflow,
-      outflow,
-      net: inflow - outflow,
-      byFund: Array.from(byFund.values()).sort(
-        (a, b) => b.inflow + b.outflow - (a.inflow + a.outflow)
-      ),
-    }))
-    .sort((a, b) => (a.month < b.month ? 1 : -1)); // newest first
-}
-
-function formatMonthLabel(month: string): string {
-  const [year, m] = month.split('-').map(Number);
-  const d = new Date(year, m - 1, 1);
-  return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-}
-
 export default function Dashboard({ displayName }: { displayName: string }) {
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,8 +80,6 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const [activeHolding, setActiveHolding] = useState<HoldingSummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState('');
-  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -222,96 +155,36 @@ export default function Dashboard({ displayName }: { displayName: string }) {
     return xirr(allFlows);
   }, [portfolio, today]);
 
-  const monthlyFlows = useMemo(() => monthlyFlowsAcrossPortfolio(portfolio), [portfolio]);
-
-  const availableYears = useMemo(() => {
-    const years = new Set(monthlyFlows.map((m) => Number(m.month.slice(0, 4))));
-    years.add(new Date(today).getFullYear());
-    return Array.from(years).sort((a, b) => a - b);
-  }, [monthlyFlows, today]);
-
-  // Default to the most recent year that actually has activity (or the
-  // current year if there's none yet) once the portfolio first loads.
-  useEffect(() => {
-    if (selectedYear === null && availableYears.length > 0) {
-      setSelectedYear(availableYears[availableYears.length - 1]);
-    }
-  }, [availableYears, selectedYear]);
-
-  const yearFilteredFlows = useMemo(() => {
-    if (selectedYear === null) return monthlyFlows;
-    return monthlyFlows.filter((m) => Number(m.month.slice(0, 4)) === selectedYear);
-  }, [monthlyFlows, selectedYear]);
-
-  // Medal rankings (top 3) for genuinely active holdings only — a fully
-  // exited (0-unit) fund has no meaningful "current" performance to rank,
-  // and a fund with negative units is a data error (a sell exceeded what
-  // was bought), not a real position, so it must never win a medal either.
-  const xirrRank = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!portfolio) return map;
-    const ranked = portfolio.holdings
-      .filter((h) => h.totalUnits > 0.0001)
-      .map((h) => ({ id: h.id, value: fundXirr.get(h.id) }))
-      .filter((r): r is { id: string; value: number } => r.value !== null && r.value !== undefined)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 3);
-    ranked.forEach((r, i) => map.set(r.id, i + 1));
-    return map;
-  }, [portfolio, fundXirr]);
-
-  const gainPctRank = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!portfolio) return map;
-    const ranked = portfolio.holdings
-      .filter((h) => h.totalUnits > 0.0001)
-      .map((h) => ({ id: h.id, value: h.gainLossPct }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 3);
-    ranked.forEach((r, i) => map.set(r.id, i + 1));
-    return map;
-  }, [portfolio]);
-
-  const medalEmoji = ['🥇', '🥈', '🥉'];
-
   if (loading) {
     return (
-      <div className={styles.page}>
-        <p className={styles.loadingText}>Loading your funds…</p>
-      </div>
+      <AppShell active="funds" displayName={displayName}>
+        <div className={styles.page}>
+          <p className={styles.loadingText}>Loading your funds…</p>
+        </div>
+      </AppShell>
     );
   }
 
   const gainPositive = (portfolio?.totalGainLoss ?? 0) >= 0;
 
   return (
-    <div className={styles.page}>
-      <header className={styles.topbar}>
-        <div className={styles.topbarMain}>
-          <div className={styles.brandBlock}>
-            <span className={styles.eyebrow}>Statement &middot; as of {formatStatementDate(today)}</span>
-            <h1 className={styles.wordmark}>PFMS Tracker</h1>
-          </div>
-          <div className={styles.topbarRight}>
-            <span className={styles.greeting}>{displayName}</span>
-            <button className={styles.signOutBtn} onClick={() => signOut({ callbackUrl: '/login' })}>
-              Sign out
-            </button>
-          </div>
-        </div>
-        <PageNav active="funds" />
-      </header>
+    <AppShell active="funds" displayName={displayName}>
+      <div className={styles.page}>
+        <header className={styles.pageHeader}>
+          <span className={styles.eyebrow}>Statement &middot; as of {formatStatementDate(today)}</span>
+          <h2 className={styles.pageTitle}>Funds</h2>
+        </header>
 
-      <main className={styles.main}>
-        {error && <p className={styles.errorBanner}>{error}</p>}
+        <main className={styles.main}>
+          {error && <p className={styles.errorBanner}>{error}</p>}
 
-        {portfolio && (
-          <section className={styles.summaryCard}>
-            <p className={styles.summaryHeading}>Account summary</p>
-            <div className={styles.summaryGrid}>
-              <div>
-                <p className={styles.summaryLabel}>Current value</p>
-                <div className={styles.totalRule}>
+          {portfolio && (
+            <section className={styles.summaryCard}>
+              <p className={styles.summaryHeading}>Account summary</p>
+              <div className={styles.summaryGrid}>
+                <div>
+                  <p className={styles.summaryLabel}>Current value</p>
+                  <div className={styles.totalRule}>
                   <p className={styles.summaryValue}>₹{formatINR(portfolio.currentValue)}</p>
                 </div>
               </div>
@@ -424,11 +297,6 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                   <div className={styles.figureCell}>
                     <span className={styles.figureLabel}>Gain / loss</span>
                     <p className={positive ? styles.holdingGainPositive : styles.holdingGainNegative}>
-                      {gainPctRank.has(h.id) && (
-                        <span className={styles.medalBadge} title={`#${gainPctRank.get(h.id)} by gain/loss %`}>
-                          {medalEmoji[gainPctRank.get(h.id)! - 1]}
-                        </span>
-                      )}
                       {positive ? '+' : ''}₹{formatINR(h.gainLoss)}
                       <span className={styles.gainPctSmall}>
                         ({positive ? '+' : ''}{h.gainLossPct.toFixed(2)}%)
@@ -447,11 +315,6 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                           : styles.holdingXirrValueNegative
                       }
                     >
-                      {xirrRank.has(h.id) && (
-                        <span className={styles.medalBadge} title={`#${xirrRank.get(h.id)} by XIRR`}>
-                          {medalEmoji[xirrRank.get(h.id)! - 1]}
-                        </span>
-                      )}
                       {formatPct(fundXirrValue)}
                     </p>
                   </div>
@@ -470,94 +333,20 @@ export default function Dashboard({ displayName }: { displayName: string }) {
             })}
           </div>
         )}
+        </main>
 
-        {monthlyFlows.length > 0 && (
-          <section className={styles.monthlyFlowSection}>
-            <div className={styles.monthlyFlowSectionHeader}>
-              <p className={styles.summaryHeading}>Monthly cash flow &middot; all funds</p>
-              {selectedYear !== null && (
-                <YearSwitcher year={selectedYear} availableYears={availableYears} onChange={setSelectedYear} />
-              )}
-            </div>
-            {yearFilteredFlows.length === 0 ? (
-              <p className={styles.monthlyFlowEmpty}>No buy/sell activity in {selectedYear}.</p>
-            ) : (
-              <>
-                <div className={styles.monthlyFlowHeader}>
-                  <span className={styles.monthlyFlowHeaderCell}>Month</span>
-                  <span className={styles.monthlyFlowHeaderCell}>Inflow (buy)</span>
-                  <span className={styles.monthlyFlowHeaderCell}>Outflow (sell)</span>
-                  <span className={styles.monthlyFlowHeaderCell}>Net</span>
-                </div>
-                {yearFilteredFlows.map((m) => {
-              const netPositive = m.net >= 0;
-              const expanded = expandedMonth === m.month;
-              return (
-                <div key={m.month}>
-                  <button
-                    className={styles.monthlyFlowRow}
-                    onClick={() => setExpandedMonth(expanded ? null : m.month)}
-                    aria-expanded={expanded}
-                  >
-                    <span className={styles.monthlyFlowMonth}>
-                      <span className={styles.monthlyFlowCaret}>{expanded ? '▾' : '▸'}</span>
-                      {formatMonthLabel(m.month)}
-                    </span>
-                    <span className={styles.monthlyFlowInflow}>
-                      {m.inflow > 0 ? `₹${formatINR(m.inflow)}` : '—'}
-                    </span>
-                    <span className={styles.monthlyFlowOutflow}>
-                      {m.outflow > 0 ? `₹${formatINR(m.outflow)}` : '—'}
-                    </span>
-                    <span className={netPositive ? styles.monthlyFlowNetPositive : styles.monthlyFlowNetNegative}>
-                      {netPositive ? '+' : ''}₹{formatINR(m.net)}
-                    </span>
-                  </button>
-
-                  {expanded && (
-                    <div className={styles.monthlyFlowBreakdown}>
-                      {m.byFund.map((f) => (
-                        <div key={f.fundId} className={styles.monthlyFlowBreakdownRow}>
-                          <span className={styles.monthlyFlowBreakdownFund}>{f.fundName}</span>
-                          <span className={styles.monthlyFlowInflow}>
-                            {f.inflow > 0 ? `₹${formatINR(f.inflow)}` : '—'}
-                          </span>
-                          <span className={styles.monthlyFlowOutflow}>
-                            {f.outflow > 0 ? `₹${formatINR(f.outflow)}` : '—'}
-                          </span>
-                          <span
-                            className={
-                              f.inflow - f.outflow >= 0
-                                ? styles.monthlyFlowNetPositive
-                                : styles.monthlyFlowNetNegative
-                            }
-                          >
-                            {f.inflow - f.outflow >= 0 ? '+' : ''}₹{formatINR(f.inflow - f.outflow)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-                })}
-              </>
-            )}
-          </section>
+        {showAddModal && (
+          <AddHoldingModal onClose={() => setShowAddModal(false)} onAdded={load} />
         )}
-      </main>
 
-      {showAddModal && (
-        <AddHoldingModal onClose={() => setShowAddModal(false)} onAdded={load} />
-      )}
-
-      {activeHolding && (
-        <TransactionModal
-          holding={activeHolding}
-          onClose={() => setActiveHolding(null)}
-          onSaved={load}
-        />
-      )}
-    </div>
+        {activeHolding && (
+          <TransactionModal
+            holding={activeHolding}
+            onClose={() => setActiveHolding(null)}
+            onSaved={load}
+          />
+        )}
+      </div>
+    </AppShell>
   );
 }
