@@ -12,7 +12,7 @@ interface Props {
 type EntryMode = 'amount' | 'units';
 
 export default function TransactionModal({ holding, onClose, onSaved }: Props) {
-  const [tab, setTab] = useState<'transaction' | 'nav' | 'history'>('transaction');
+  const [tab, setTab] = useState<'transaction' | 'nav' | 'history' | 'bulk'>('transaction');
 
   const [type, setType] = useState<'BUY' | 'SELL'>('BUY');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -29,6 +29,16 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
 
   const [navValue, setNavValue] = useState(holding.fund.latest_nav?.toString() ?? '');
   const [navDate, setNavDate] = useState(new Date().toISOString().slice(0, 10));
+
+  const bulkFileInputRef = useRef<HTMLInputElement>(null);
+  const [bulkFileName, setBulkFileName] = useState('');
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkError, setBulkError] = useState('');
+  const [bulkResult, setBulkResult] = useState<{
+    imported: number;
+    skipped: number;
+    errors: { row: number; message: string }[];
+  } | null>(null);
 
   const hasSchemeCode = Boolean(holding.fund.scheme_code);
   const lastFetchedKey = useRef<string>('');
@@ -157,6 +167,48 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
     onSaved();
   }
 
+  function handleBulkFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setBulkError('');
+    setBulkResult(null);
+    const file = e.target.files?.[0];
+    setBulkFileName(file ? file.name : '');
+  }
+
+  async function handleBulkUpload() {
+    const file = bulkFileInputRef.current?.files?.[0];
+    if (!file) {
+      setBulkError('Choose a filled-in template file first.');
+      return;
+    }
+
+    setBulkError('');
+    setBulkUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch(`/api/holdings/${holding.id}/bulk`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setBulkError(data.error || 'Could not import this file.');
+        return;
+      }
+
+      setBulkResult(data);
+      if (data.imported > 0) {
+        onSaved();
+      }
+    } catch {
+      setBulkError('Could not reach the server.');
+    } finally {
+      setBulkUploading(false);
+    }
+  }
+
   const sortedTxns = [...holding.transactions].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -215,6 +267,12 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
             onClick={() => setTab('history')}
           >
             History ({holding.transactions.length})
+          </button>
+          <button
+            style={tab === 'bulk' ? styles.tabActive : styles.tab}
+            onClick={() => setTab('bulk')}
+          >
+            Bulk import
           </button>
         </div>
 
@@ -434,6 +492,76 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
             )}
             <div style={styles.actions}>
               <button style={styles.cancelBtn} onClick={onClose}>Close</button>
+            </div>
+          </div>
+        )}
+
+        {tab === 'bulk' && (
+          <div>
+            <p style={styles.hint}>
+              Add many BUY/SELL transactions for this fund in one go. Download the template
+              below, fill it in, then upload it here.
+            </p>
+
+            <a
+              href={`/api/holdings/${holding.id}/bulk/template`}
+              download
+              style={styles.templateLink}
+            >
+              ⬇ Download Excel template
+            </a>
+
+            <label style={styles.dropZone}>
+              <input
+                ref={bulkFileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleBulkFileChange}
+                style={styles.fileInput}
+              />
+              {bulkFileName ? (
+                <span style={styles.fileName}>{bulkFileName}</span>
+              ) : (
+                <span style={styles.dropHint}>Click to choose a filled-in .xlsx file</span>
+              )}
+            </label>
+
+            {bulkError && <p style={styles.error}>{bulkError}</p>}
+
+            {bulkResult && (
+              <div style={styles.resultBox}>
+                <p style={styles.resultSummary}>
+                  Imported {bulkResult.imported} transaction{bulkResult.imported === 1 ? '' : 's'}
+                  {bulkResult.skipped > 0
+                    ? `, skipped ${bulkResult.skipped} row${bulkResult.skipped === 1 ? '' : 's'}`
+                    : ''}
+                  .
+                </p>
+                {bulkResult.errors.length > 0 && (
+                  <div style={styles.errorList}>
+                    {bulkResult.errors.map((e, i) => (
+                      <p key={i} style={styles.errorRow}>
+                        Row {e.row}: {e.message}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={styles.actions}>
+              <button style={styles.cancelBtn} onClick={onClose}>
+                {bulkResult ? 'Done' : 'Cancel'}
+              </button>
+              {!bulkResult && (
+                <button
+                  style={styles.submitBtn}
+                  disabled={bulkUploading || !bulkFileName}
+                  onClick={handleBulkUpload}
+                >
+                  {bulkUploading ? 'Importing…' : 'Import'}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -736,5 +864,69 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     color: 'var(--ink-faint)',
     textDecoration: 'underline',
+  },
+  templateLink: {
+    display: 'inline-block',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: 'var(--ledger-green)',
+    border: '1px solid var(--ledger-green)',
+    borderRadius: '3px',
+    padding: '9px 14px',
+    marginBottom: '18px',
+  },
+  dropZone: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '64px',
+    border: '1px dashed var(--hairline)',
+    borderRadius: '4px',
+    background: 'var(--paper)',
+    cursor: 'pointer',
+    marginBottom: '14px',
+    padding: '12px',
+    textAlign: 'center',
+  },
+  fileInput: {
+    position: 'absolute',
+    inset: 0,
+    opacity: 0,
+    cursor: 'pointer',
+  },
+  fileName: {
+    fontSize: '14px',
+    color: 'var(--ink)',
+    fontWeight: 500,
+  },
+  dropHint: {
+    fontSize: '13px',
+    color: 'var(--ink-faint)',
+  },
+  resultBox: {
+    border: '1px solid var(--hairline)',
+    borderRadius: '4px',
+    padding: '14px',
+    marginBottom: '4px',
+    background: 'var(--paper)',
+  },
+  resultSummary: {
+    fontSize: '14px',
+    color: 'var(--ink)',
+    fontWeight: 600,
+    margin: '0 0 6px',
+  },
+  errorList: {
+    maxHeight: '160px',
+    overflowY: 'auto',
+    marginTop: '8px',
+    borderTop: '1px solid var(--hairline)',
+    paddingTop: '8px',
+  },
+  errorRow: {
+    fontSize: '12.5px',
+    color: 'var(--brick)',
+    margin: '0 0 4px',
   },
 };
