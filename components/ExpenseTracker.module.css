@@ -264,8 +264,146 @@
 }
 
 /* ----------------------------------------------------------------
-   Empty state
+   Filters
    ---------------------------------------------------------------- */
+.filterBar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+  flex: 1 1 150px;
+}
+
+.filterLabel {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.filterInput,
+.filterSelect {
+  padding: 9px 10px;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  font-size: 13.5px;
+  font-family: var(--font-body);
+  color: var(--ink);
+  width: 100%;
+  transition: border-color 0.15s ease;
+}
+
+.filterInput:focus,
+.filterSelect:focus {
+  outline: none;
+  border-color: var(--brass);
+}
+
+.clearFiltersBtn {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.clearFiltersBtn:hover {
+  border-color: var(--brick);
+  color: var(--brick);
+}
+
+.clearFiltersBtnCentered {
+  margin-top: 16px;
+  padding: 9px 18px;
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.clearFiltersBtnCentered:hover {
+  border-color: var(--brick);
+  color: var(--brick);
+}
+
+.filterSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+  margin-bottom: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.filterSummaryTotals {
+  display: flex;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------------
+   Scrollable transactions pane — keeps the cashbook list from
+   growing the page indefinitely once a month has many entries.
+   ---------------------------------------------------------------- */
+.entriesScroll {
+  max-height: 620px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+}
+
+.entriesScroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.entriesScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.entriesScroll::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 4px;
+}
+
+.entriesScroll::-webkit-scrollbar-thumb:hover {
+  background: var(--brass);
+}
+
+
 .emptyState {
   border: 1px dashed var(--hairline);
   border-radius: 4px;
@@ -304,6 +442,9 @@
 }
 
 .dayHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -539,6 +680,28 @@
   .deleteBtn,
   .editBtn {
     opacity: 1;
+  }
+
+  .filterBar {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .filterField {
+    flex-basis: 100%;
+  }
+
+  .clearFiltersBtn {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+
+  .filterSummary {
+    flex-wrap: wrap;
+  }
+
+  .entriesScroll {
+    max-height: 70vh;
   }
 }
 

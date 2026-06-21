@@ -29,6 +29,14 @@ function formatMonthLong(month: string): string {
   return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
 
+// Last calendar day of a YYYY-MM month, as YYYY-MM-DD — used to bound the
+// date filter input so it can't be set to a day outside the loaded month.
+function monthEndDate(month: string): string {
+  const [year, m] = month.split('-').map(Number);
+  const lastDay = new Date(year, m, 0).getDate();
+  return `${month}-${String(lastDay).padStart(2, '0')}`;
+}
+
 // Groups entries (already sorted newest-first by the API) under their date,
 // the way a cashbook lists every line for a day before moving to the next.
 function groupByDate(entries: ExpenseEntry[]): { date: string; entries: ExpenseEntry[] }[] {
@@ -55,6 +63,16 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   const [editingEntry, setEditingEntry] = useState<ExpenseEntry | null>(null);
   const [defaultDirection, setDefaultDirection] = useState<'INFLOW' | 'OUTFLOW'>('OUTFLOW');
 
+  // Transaction list filters — date narrows to a single day within the
+  // loaded month, while the income/expense head filters narrow to one
+  // category each. The two head filters are independent: picking either
+  // shows just that head's entries, and picking both shows entries
+  // matching either one (an entry can never match both at once, since
+  // income and expense heads sit on opposite directions).
+  const [filterDate, setFilterDate] = useState('');
+  const [filterIncomeHead, setFilterIncomeHead] = useState('');
+  const [filterExpenseHead, setFilterExpenseHead] = useState('');
+
   const load = useCallback(async (forMonth: string) => {
     setError('');
     try {
@@ -76,6 +94,14 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
     load(month);
   }, [load, month]);
 
+  // A date/head filter picked while looking at one month rarely makes
+  // sense after jumping to another, so clear them on every month change.
+  useEffect(() => {
+    setFilterDate('');
+    setFilterIncomeHead('');
+    setFilterExpenseHead('');
+  }, [month]);
+
   const refresh = useCallback(() => load(month), [load, month]);
 
   async function handleDeleteEntry(id: string) {
@@ -86,10 +112,43 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  const groups = useMemo(() => {
+  const hasActiveFilters = Boolean(filterDate || filterIncomeHead || filterExpenseHead);
+
+  const filteredEntries = useMemo(() => {
     if (!summary) return [];
-    return groupByDate(summary.entries);
-  }, [summary]);
+    if (!hasActiveFilters) return summary.entries;
+    return summary.entries.filter((entry) => {
+      if (filterDate && entry.date !== filterDate) return false;
+
+      if (filterIncomeHead || filterExpenseHead) {
+        const matchesIncome =
+          filterIncomeHead && entry.direction === 'INFLOW' && entry.category_id === filterIncomeHead;
+        const matchesExpense =
+          filterExpenseHead && entry.direction === 'OUTFLOW' && entry.category_id === filterExpenseHead;
+        if (!matchesIncome && !matchesExpense) return false;
+      }
+
+      return true;
+    });
+  }, [summary, hasActiveFilters, filterDate, filterIncomeHead, filterExpenseHead]);
+
+  const filteredTotals = useMemo(() => {
+    const inflow = filteredEntries
+      .filter((e) => e.direction === 'INFLOW')
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+    const outflow = filteredEntries
+      .filter((e) => e.direction === 'OUTFLOW')
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+    return { inflow, outflow };
+  }, [filteredEntries]);
+
+  function clearFilters() {
+    setFilterDate('');
+    setFilterIncomeHead('');
+    setFilterExpenseHead('');
+  }
+
+  const groups = useMemo(() => groupByDate(filteredEntries), [filteredEntries]);
 
   const incomeHeads = useMemo(
     () => (summary?.categories ?? []).filter((c) => c.kind === 'INCOME'),
@@ -207,6 +266,79 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
           </button>
         </div>
 
+        {summary && summary.entries.length > 0 && (
+          <div className={styles.filterBar}>
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>Date</span>
+              <input
+                type="date"
+                className={styles.filterInput}
+                value={filterDate}
+                min={`${summary.month}-01`}
+                max={monthEndDate(summary.month)}
+                onChange={(e) => setFilterDate(e.target.value)}
+                aria-label="Filter by date"
+              />
+            </label>
+
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>Income head</span>
+              <select
+                className={styles.filterSelect}
+                value={filterIncomeHead}
+                onChange={(e) => setFilterIncomeHead(e.target.value)}
+                aria-label="Filter by income head"
+              >
+                <option value="">All income heads</option>
+                {incomeHeads.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className={styles.filterField}>
+              <span className={styles.filterLabel}>Expense head</span>
+              <select
+                className={styles.filterSelect}
+                value={filterExpenseHead}
+                onChange={(e) => setFilterExpenseHead(e.target.value)}
+                aria-label="Filter by expense head"
+              >
+                <option value="">All expense heads</option>
+                {expenseHeads.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {hasActiveFilters && (
+              <button className={styles.clearFiltersBtn} onClick={clearFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {hasActiveFilters && (
+          <div className={styles.filterSummary}>
+            <span>
+              {filteredEntries.length} {filteredEntries.length === 1 ? 'entry' : 'entries'} matched
+            </span>
+            <span className={styles.filterSummaryTotals}>
+              {filteredTotals.inflow > 0 && (
+                <span className={styles.dayInflow}>+₹{formatINR(filteredTotals.inflow)}</span>
+              )}
+              {filteredTotals.outflow > 0 && (
+                <span className={styles.dayOutflow}>−₹{formatINR(filteredTotals.outflow)}</span>
+              )}
+            </span>
+          </div>
+        )}
+
         {summary && summary.entries.length === 0 ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyTitle}>No entries for {formatMonthLong(summary.month)}.</p>
@@ -214,66 +346,76 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
               Log an income or expense entry to start tracking cash flow for this month.
             </p>
           </div>
+        ) : groups.length === 0 ? (
+          <div className={styles.emptyState}>
+            <p className={styles.emptyTitle}>No entries match these filters.</p>
+            <p className={styles.emptyBody}>Try a different date or head, or clear the filters.</p>
+            <button className={styles.clearFiltersBtnCentered} onClick={clearFilters}>
+              Clear filters
+            </button>
+          </div>
         ) : (
-          <div className={styles.entriesList}>
-            {groups.map((group) => {
-              const dayInflow = group.entries
-                .filter((e) => e.direction === 'INFLOW')
-                .reduce((sum, e) => sum + Number(e.amount), 0);
-              const dayOutflow = group.entries
-                .filter((e) => e.direction === 'OUTFLOW')
-                .reduce((sum, e) => sum + Number(e.amount), 0);
+          <div className={styles.entriesScroll}>
+            <div className={styles.entriesList}>
+              {groups.map((group) => {
+                const dayInflow = group.entries
+                  .filter((e) => e.direction === 'INFLOW')
+                  .reduce((sum, e) => sum + Number(e.amount), 0);
+                const dayOutflow = group.entries
+                  .filter((e) => e.direction === 'OUTFLOW')
+                  .reduce((sum, e) => sum + Number(e.amount), 0);
 
-              return (
-                <div key={group.date} className={styles.dayGroup}>
-                  <div className={styles.dayHeader}>
-                    <span className={styles.dayDate}>{formatEntryDate(group.date)}</span>
-                    <span className={styles.dayTotals}>
-                      {dayInflow > 0 && <span className={styles.dayInflow}>+₹{formatINR(dayInflow)}</span>}
-                      {dayOutflow > 0 && <span className={styles.dayOutflow}>−₹{formatINR(dayOutflow)}</span>}
-                    </span>
-                  </div>
-                  {group.entries.map((entry) => (
-                    <div key={entry.id} className={styles.entryRow}>
-                      <div className={styles.entryMain}>
+                return (
+                  <div key={group.date} className={styles.dayGroup}>
+                    <div className={styles.dayHeader}>
+                      <span className={styles.dayDate}>{formatEntryDate(group.date)}</span>
+                      <span className={styles.dayTotals}>
+                        {dayInflow > 0 && <span className={styles.dayInflow}>+₹{formatINR(dayInflow)}</span>}
+                        {dayOutflow > 0 && <span className={styles.dayOutflow}>−₹{formatINR(dayOutflow)}</span>}
+                      </span>
+                    </div>
+                    {group.entries.map((entry) => (
+                      <div key={entry.id} className={styles.entryRow}>
+                        <div className={styles.entryMain}>
+                          <span
+                            className={
+                              entry.direction === 'INFLOW' ? styles.tagInflow : styles.tagOutflow
+                            }
+                          >
+                            {entry.direction === 'INFLOW' ? 'In' : 'Out'}
+                          </span>
+                          <span className={styles.entryHead}>{entry.category.name}</span>
+                          {entry.notes && <span className={styles.entryNotes}>{entry.notes}</span>}
+                        </div>
                         <span
                           className={
-                            entry.direction === 'INFLOW' ? styles.tagInflow : styles.tagOutflow
+                            entry.direction === 'INFLOW' ? styles.entryAmountIn : styles.entryAmountOut
                           }
                         >
-                          {entry.direction === 'INFLOW' ? 'In' : 'Out'}
+                          {entry.direction === 'INFLOW' ? '+' : '−'}₹{formatINR(Number(entry.amount))}
                         </span>
-                        <span className={styles.entryHead}>{entry.category.name}</span>
-                        {entry.notes && <span className={styles.entryNotes}>{entry.notes}</span>}
+                        <div className={styles.entryActions}>
+                          <button
+                            className={styles.editBtn}
+                            onClick={() => handleEditEntry(entry)}
+                            aria-label="Edit entry"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className={styles.deleteBtn}
+                            onClick={() => handleDeleteEntry(entry.id)}
+                            aria-label="Delete entry"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                      <span
-                        className={
-                          entry.direction === 'INFLOW' ? styles.entryAmountIn : styles.entryAmountOut
-                        }
-                      >
-                        {entry.direction === 'INFLOW' ? '+' : '−'}₹{formatINR(Number(entry.amount))}
-                      </span>
-                      <div className={styles.entryActions}>
-                        <button
-                          className={styles.editBtn}
-                          onClick={() => handleEditEntry(entry)}
-                          aria-label="Edit entry"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className={styles.deleteBtn}
-                          onClick={() => handleDeleteEntry(entry.id)}
-                          aria-label="Delete entry"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
         </main>
