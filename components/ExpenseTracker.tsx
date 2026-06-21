@@ -124,8 +124,8 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
     );
   }
 
-  const netPositive = (summary?.net ?? 0) >= 0;
-  const broughtForwardPositive = (summary?.openingBalance ?? 0) >= 0;
+  const closingPositive = (summary?.netWithCarryForward ?? 0) >= 0;
+  const carryForwardPositive = (summary?.carryForward ?? 0) >= 0;
 
   return (
     <AppShell active="expenses" displayName={displayName}>
@@ -151,9 +151,9 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
               <p className={styles.summaryHeading}>Cashbook summary &middot; {formatMonthLong(summary.month)}</p>
 
               <div className={styles.broughtForwardRow}>
-                <span className={styles.summaryLabel}>Brought forward</span>
-                <span className={broughtForwardPositive ? styles.broughtForwardPositive : styles.broughtForwardNegative}>
-                  {broughtForwardPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.openingBalance))}
+                <span className={styles.summaryLabel}>Carried forward</span>
+                <span className={carryForwardPositive ? styles.broughtForwardPositive : styles.broughtForwardNegative}>
+                  {carryForwardPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.carryForward))}
                 </span>
             </div>
 
@@ -169,8 +169,8 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
               <div>
                 <p className={styles.summaryLabel}>Closing balance</p>
                 <div className={styles.totalRule}>
-                  <p className={netPositive ? styles.netPositive : styles.netNegative}>
-                    {netPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.net))}
+                  <p className={closingPositive ? styles.netPositive : styles.netNegative}>
+                    {closingPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.netWithCarryForward))}
                   </p>
                 </div>
               </div>
