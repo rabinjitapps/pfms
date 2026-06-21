@@ -60,6 +60,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<ExpenseEntry | null>(null);
   const [showHeadsModal, setShowHeadsModal] = useState(false);
   const [defaultDirection, setDefaultDirection] = useState<'INFLOW' | 'OUTFLOW'>('OUTFLOW');
   const [fromDate, setFromDate] = useState('');
@@ -155,7 +156,19 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
 
   function openAdd(direction: 'INFLOW' | 'OUTFLOW') {
     setDefaultDirection(direction);
+    setEditingEntry(null);
     setShowAddModal(true);
+  }
+
+  function openEdit(entry: ExpenseEntry) {
+    setEditingEntry(entry);
+    setDefaultDirection(entry.direction);
+    setShowAddModal(true);
+  }
+
+  function closeModal() {
+    setShowAddModal(false);
+    setEditingEntry(null);
   }
 
   // After saving an entry, jump to whichever month it was actually dated
@@ -386,13 +399,22 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
                       >
                         {entry.direction === 'INFLOW' ? '+' : '−'}₹{formatINR(Number(entry.amount))}
                       </span>
-                      <button
-                        className={styles.deleteBtn}
-                        onClick={() => handleDeleteEntry(entry.id)}
-                        aria-label="Delete entry"
-                      >
-                        Delete
-                      </button>
+                      <div className={styles.entryActions}>
+                        <button
+                          className={styles.editBtn}
+                          onClick={() => openEdit(entry)}
+                          aria-label="Edit entry"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className={styles.deleteBtn}
+                          onClick={() => handleDeleteEntry(entry.id)}
+                          aria-label="Delete entry"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -406,7 +428,8 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
         <AddExpenseModal
           categories={summary?.categories ?? []}
           defaultDirection={defaultDirection}
-          onClose={() => setShowAddModal(false)}
+          editingEntry={editingEntry}
+          onClose={closeModal}
           onSaved={handleEntrySaved}
         />
       )}

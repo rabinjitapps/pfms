@@ -1,24 +1,35 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ExpenseCategory, ExpenseDirection } from '@/types';
+import { ExpenseCategory, ExpenseDirection, ExpenseEntry } from '@/types';
 
 interface Props {
   categories: ExpenseCategory[];
   defaultDirection: ExpenseDirection;
+  editingEntry?: ExpenseEntry | null;
   onClose: () => void;
   onSaved: (date: string) => void;
 }
 
 const NEW_HEAD_VALUE = '__new__';
 
-export default function AddExpenseModal({ categories, defaultDirection, onClose, onSaved }: Props) {
-  const [direction, setDirection] = useState<ExpenseDirection>(defaultDirection);
-  const [categoryId, setCategoryId] = useState('');
+export default function AddExpenseModal({
+  categories,
+  defaultDirection,
+  editingEntry = null,
+  onClose,
+  onSaved,
+}: Props) {
+  const isEditing = editingEntry !== null;
+
+  const [direction, setDirection] = useState<ExpenseDirection>(
+    editingEntry?.direction ?? defaultDirection
+  );
+  const [categoryId, setCategoryId] = useState(editingEntry?.category_id ?? '');
   const [newHeadName, setNewHeadName] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [amount, setAmount] = useState('');
-  const [notes, setNotes] = useState('');
+  const [date, setDate] = useState(editingEntry?.date ?? new Date().toISOString().slice(0, 10));
+  const [amount, setAmount] = useState(editingEntry ? String(editingEntry.amount) : '');
+  const [notes, setNotes] = useState(editingEntry?.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -73,8 +84,11 @@ export default function AddExpenseModal({ categories, defaultDirection, onClose,
         resolvedCategoryId = headData.category.id;
       }
 
-      const res = await fetch('/api/expense-entries', {
-        method: 'POST',
+      const url = isEditing ? `/api/expense-entries/${editingEntry!.id}` : '/api/expense-entries';
+      const method = isEditing ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           categoryId: resolvedCategoryId,
@@ -86,7 +100,7 @@ export default function AddExpenseModal({ categories, defaultDirection, onClose,
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Could not save entry.');
+        setError(data.error || `Could not ${isEditing ? 'update' : 'save'} entry.`);
         return;
       }
       onSaved(date);
@@ -100,7 +114,7 @@ export default function AddExpenseModal({ categories, defaultDirection, onClose,
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
-          <h2 style={styles.title}>Add an entry</h2>
+          <h2 style={styles.title}>{isEditing ? 'Edit entry' : 'Add an entry'}</h2>
           <button style={styles.closeBtn} onClick={onClose} aria-label="Close">×</button>
         </div>
 
@@ -193,7 +207,11 @@ export default function AddExpenseModal({ categories, defaultDirection, onClose,
             disabled={saving}
             onClick={handleSubmit}
           >
-            {saving ? 'Saving…' : `Record ${direction === 'INFLOW' ? 'income' : 'expense'}`}
+            {saving
+              ? 'Saving…'
+              : isEditing
+              ? 'Save changes'
+              : `Record ${direction === 'INFLOW' ? 'income' : 'expense'}`}
           </button>
         </div>
       </div>
