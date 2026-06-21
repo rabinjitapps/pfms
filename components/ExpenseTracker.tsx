@@ -6,6 +6,7 @@ import AppShell from './AppShell';
 import MonthSwitcher from './MonthSwitcher';
 import AddExpenseModal from './AddExpenseModal';
 import ManageHeadsModal from './ManageHeadsModal';
+import BulkImportModal from './BulkImportModal';
 import styles from './ExpenseTracker.module.css';
 
 function formatINR(n: number): string {
@@ -50,6 +51,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showHeadsModal, setShowHeadsModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [defaultDirection, setDefaultDirection] = useState<'INFLOW' | 'OUTFLOW'>('OUTFLOW');
 
   const load = useCallback(async (forMonth: string) => {
@@ -124,8 +126,8 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
     );
   }
 
-  const closingPositive = (summary?.netWithCarryForward ?? 0) >= 0;
-  const carryForwardPositive = (summary?.carryForward ?? 0) >= 0;
+  const netPositive = (summary?.net ?? 0) >= 0;
+  const broughtForwardPositive = (summary?.openingBalance ?? 0) >= 0;
 
   return (
     <AppShell active="expenses" displayName={displayName}>
@@ -151,9 +153,9 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
               <p className={styles.summaryHeading}>Cashbook summary &middot; {formatMonthLong(summary.month)}</p>
 
               <div className={styles.broughtForwardRow}>
-                <span className={styles.summaryLabel}>Carried forward</span>
-                <span className={carryForwardPositive ? styles.broughtForwardPositive : styles.broughtForwardNegative}>
-                  {carryForwardPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.carryForward))}
+                <span className={styles.summaryLabel}>Brought forward</span>
+                <span className={broughtForwardPositive ? styles.broughtForwardPositive : styles.broughtForwardNegative}>
+                  {broughtForwardPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.openingBalance))}
                 </span>
             </div>
 
@@ -169,8 +171,8 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
               <div>
                 <p className={styles.summaryLabel}>Closing balance</p>
                 <div className={styles.totalRule}>
-                  <p className={closingPositive ? styles.netPositive : styles.netNegative}>
-                    {closingPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.netWithCarryForward))}
+                  <p className={netPositive ? styles.netPositive : styles.netNegative}>
+                    {netPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.net))}
                   </p>
                 </div>
               </div>
@@ -187,6 +189,9 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
           </button>
           <button className={styles.secondaryBtn} onClick={() => setShowHeadsModal(true)}>
             Manage heads
+          </button>
+          <button className={styles.secondaryBtn} onClick={() => setShowBulkModal(true)}>
+            Bulk import
           </button>
         </div>
 
@@ -267,6 +272,13 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
             expenseHeads={expenseHeads}
             onClose={() => setShowHeadsModal(false)}
             onChanged={refresh}
+          />
+        )}
+
+        {showBulkModal && (
+          <BulkImportModal
+            onClose={() => setShowBulkModal(false)}
+            onImported={refresh}
           />
         )}
       </div>
