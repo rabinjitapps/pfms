@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PortfolioSummary, HoldingSummary } from '@/types';
 import { xirr, CashFlow } from '@/lib/xirr';
 import AddHoldingModal from './AddHoldingModal';
+import BulkImportTransactionsModal from './BulkImportTransactionsModal';
 import TransactionModal from './TransactionModal';
 import AppShell from './AppShell';
 import styles from './Dashboard.module.css';
@@ -77,6 +78,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [activeHolding, setActiveHolding] = useState<HoldingSummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState('');
@@ -229,6 +231,9 @@ export default function Dashboard({ displayName }: { displayName: string }) {
           <button className={styles.primaryBtn} onClick={() => setShowAddModal(true)}>
             + Add fund
           </button>
+          <button className={styles.secondaryBtn} onClick={() => setShowBulkModal(true)}>
+            Bulk import
+          </button>
           <button className={styles.secondaryBtn} onClick={handleRefreshNav} disabled={refreshing}>
             {refreshing ? 'Refreshing NAVs…' : 'Refresh NAVs'}
           </button>
@@ -337,6 +342,10 @@ export default function Dashboard({ displayName }: { displayName: string }) {
 
         {showAddModal && (
           <AddHoldingModal onClose={() => setShowAddModal(false)} onAdded={load} />
+        )}
+
+        {showBulkModal && (
+          <BulkImportTransactionsModal onClose={() => setShowBulkModal(false)} onImported={load} />
         )}
 
         {activeHolding && (
