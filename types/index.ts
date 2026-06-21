@@ -104,3 +104,10 @@ export interface BulkImportResult {
   errors: BulkImportRowError[];
   createdHeads: string[];
 }
+
+export interface FundBulkImportResult {
+  imported: number;
+  skipped: number;
+  errors: BulkImportRowError[];
+  createdFunds: string[];
+}
