@@ -52,6 +52,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   const [showAddModal, setShowAddModal] = useState(false);
   const [showHeadsModal, setShowHeadsModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<ExpenseEntry | null>(null);
   const [defaultDirection, setDefaultDirection] = useState<'INFLOW' | 'OUTFLOW'>('OUTFLOW');
 
   const load = useCallback(async (forMonth: string) => {
@@ -100,8 +101,19 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
   );
 
   function openAdd(direction: 'INFLOW' | 'OUTFLOW') {
+    setEditingEntry(null);
     setDefaultDirection(direction);
     setShowAddModal(true);
+  }
+
+  function handleEditEntry(entry: ExpenseEntry) {
+    setEditingEntry(entry);
+    setShowAddModal(true);
+  }
+
+  function closeAddModal() {
+    setShowAddModal(false);
+    setEditingEntry(null);
   }
 
   // After saving an entry, jump to whichever month it was actually dated
@@ -126,7 +138,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
     );
   }
 
-  const netPositive = (summary?.net ?? 0) >= 0;
+  const netWithCarryForwardPositive = (summary?.netWithCarryForward ?? 0) >= 0;
   const broughtForwardPositive = (summary?.carryForward ?? 0) >= 0;
 
   return (
@@ -171,8 +183,8 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
               <div>
                 <p className={styles.summaryLabel}>Closing balance</p>
                 <div className={styles.totalRule}>
-                  <p className={netPositive ? styles.netPositive : styles.netNegative}>
-                    {netPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.net))}
+                  <p className={netWithCarryForwardPositive ? styles.netPositive : styles.netNegative}>
+                    {netWithCarryForwardPositive ? '+' : '−'}₹{formatINR(Math.abs(summary.netWithCarryForward))}
                   </p>
                 </div>
               </div>
@@ -241,13 +253,22 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
                       >
                         {entry.direction === 'INFLOW' ? '+' : '−'}₹{formatINR(Number(entry.amount))}
                       </span>
-                      <button
-                        className={styles.deleteBtn}
-                        onClick={() => handleDeleteEntry(entry.id)}
-                        aria-label="Delete entry"
-                      >
-                        Delete
-                      </button>
+                      <div className={styles.entryActions}>
+                        <button
+                          className={styles.editBtn}
+                          onClick={() => handleEditEntry(entry)}
+                          aria-label="Edit entry"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className={styles.deleteBtn}
+                          onClick={() => handleDeleteEntry(entry.id)}
+                          aria-label="Delete entry"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -261,7 +282,8 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
           <AddExpenseModal
             categories={summary?.categories ?? []}
             defaultDirection={defaultDirection}
-            onClose={() => setShowAddModal(false)}
+            editingEntry={editingEntry}
+            onClose={closeAddModal}
             onSaved={handleEntrySaved}
           />
         )}

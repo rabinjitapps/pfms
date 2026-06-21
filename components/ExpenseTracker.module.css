@@ -357,7 +357,8 @@
   background: var(--brass-soft);
 }
 
-.entryRow:hover .deleteBtn {
+.entryRow:hover .deleteBtn,
+.entryRow:hover .editBtn {
   opacity: 1;
 }
 
@@ -426,6 +427,32 @@
   font-weight: 600;
   color: var(--brick);
   font-variant-numeric: tabular-nums;
+}
+
+.entryActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.editBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  opacity: 0;
+  padding: 4px;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.editBtn:hover {
+  color: var(--ledger-green);
 }
 
 .deleteBtn {
@@ -509,7 +536,8 @@
     flex-basis: 100%;
   }
 
-  .deleteBtn {
+  .deleteBtn,
+  .editBtn {
     opacity: 1;
   }
 }
