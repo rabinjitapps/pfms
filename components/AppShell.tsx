@@ -2,7 +2,7 @@ import Sidebar from './Sidebar';
 import styles from './AppShell.module.css';
 
 interface Props {
-  active: 'funds' | 'expenses';
+  active: 'funds' | 'stocks' | 'expenses';
   displayName: string;
   children: React.ReactNode;
 }
