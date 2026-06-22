@@ -161,4 +161,5 @@ export interface BulkImportResult {
   imported: number;
   skipped: number;
   errors: BulkImportRowError[];
+  createdHeads: string[]; // names of new heads auto-created during import
 }
