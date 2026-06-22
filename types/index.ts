@@ -152,14 +152,30 @@ export interface ExpenseSummary {
   entries: ExpenseEntry[];
 }
 
+// ----------------------------------------------------------------------
+// Bulk import (Excel upload)
+// ----------------------------------------------------------------------
+
+// A single row that failed to import, with a 1-based Excel row number
+// (matching the visible spreadsheet row, header included) and a
+// human-readable reason. Shared by both bulk import endpoints below.
 export interface BulkImportRowError {
   row: number;
   message: string;
 }
 
+// Response shape for POST /api/expense-entries/bulk
 export interface BulkImportResult {
   imported: number;
   skipped: number;
   errors: BulkImportRowError[];
-  createdHeads: string[]; // names of new heads auto-created during import
+  createdHeads: string[]; // names of income/expense heads auto-created during this import
+}
+
+// Response shape for POST /api/transactions/bulk
+export interface FundBulkImportResult {
+  imported: number;
+  skipped: number;
+  errors: BulkImportRowError[];
+  createdFunds: string[]; // names of funds auto-created during this import
 }
