@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : currentMonth();
   const { start, end } = monthBounds(month);
 
-  const [categoriesRes, entriesRes, monthsRes, priorEntriesRes] = await Promise.all([
+  const [categoriesRes, entriesRes, monthsRpcRes, carryForwardRpcRes] = await Promise.all([
     supabaseAdmin
       .from('expense_categories')
       .select('*')
@@ -41,22 +41,22 @@ export async function GET(req: NextRequest) {
       .gte('date', start)
       .lte('date', end)
       .order('date', { ascending: false })
-      .order('created_at', { ascending: false }),
-    // Lightweight pass over just the date column, to know which months
-    // actually have entries (used to keep the month switcher useful even
-    // when there's only data in a couple of months).
-    supabaseAdmin
-      .from('expense_entries')
-      .select('date')
-      .eq('user_id', userId)
-      .order('date', { ascending: true }),
-    // Every entry strictly before this month's start, to compute the
-    // running balance carried forward into the selected month.
-    supabaseAdmin
-      .from('expense_entries')
-      .select('direction, amount')
-      .eq('user_id', userId)
-      .lt('date', start),
+      .order('created_at', { ascending: false })
+      // Explicit range override — without this, Supabase's default 1000-row
+      // select() cap would silently truncate a single month's entries too,
+      // for any month busy enough to cross that threshold on its own.
+      .range(0, 9999),
+    // Distinct months with at least one entry, computed inside Postgres —
+    // pulling every entry's date over the network just to dedupe it
+    // client-side hit Supabase's default 1000-row select() cap once total
+    // entries grew past 1000, silently truncating the available month range.
+    supabaseAdmin.rpc('expense_available_months', { p_user_id: userId }),
+    // Running balance from every entry strictly before this month, summed
+    // inside Postgres for the same reason — the previous select()-then-
+    // reduce() approach silently truncated at 1000 rows once a user's
+    // history grew past that, which is exactly what broke carry-forward
+    // starting around July for accounts with several months of entries.
+    supabaseAdmin.rpc('expense_carry_forward', { p_user_id: userId, p_before_date: start }),
   ]);
 
   if (categoriesRes.error) {
@@ -67,12 +67,12 @@ export async function GET(req: NextRequest) {
     console.error('Failed to fetch expense entries:', entriesRes.error);
     return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 });
   }
-  if (monthsRes.error) {
-    console.error('Failed to fetch expense entry months:', monthsRes.error);
+  if (monthsRpcRes.error) {
+    console.error('Failed to fetch expense entry months:', monthsRpcRes.error);
     return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 });
   }
-  if (priorEntriesRes.error) {
-    console.error('Failed to fetch prior expense entries:', priorEntriesRes.error);
+  if (carryForwardRpcRes.error) {
+    console.error('Failed to compute carry-forward balance:', carryForwardRpcRes.error);
     return NextResponse.json({ error: 'Failed to fetch entries' }, { status: 500 });
   }
 
@@ -85,14 +85,9 @@ export async function GET(req: NextRequest) {
     .filter((e) => e.direction === 'OUTFLOW')
     .reduce((sum, e) => sum + Number(e.amount), 0);
 
-  const carryForward = (priorEntriesRes.data ?? []).reduce((sum, e) => {
-    const amount = Number(e.amount);
-    return sum + (e.direction === 'INFLOW' ? amount : -amount);
-  }, 0);
+  const carryForward = Number(carryForwardRpcRes.data ?? 0);
 
-  const availableMonths = Array.from(
-    new Set((monthsRes.data ?? []).map((r) => (r.date as string).slice(0, 7)))
-  );
+  const availableMonths = ((monthsRpcRes.data ?? []) as { month: string }[]).map((r) => r.month);
   // Always include the current month, so "today" is always reachable
   // even before the very first entry is logged.
   if (!availableMonths.includes(currentMonth())) {
