@@ -55,6 +55,65 @@ export interface PortfolioSummary {
 }
 
 // ----------------------------------------------------------------------
+// Stock tracker
+// ----------------------------------------------------------------------
+
+export interface Stock {
+  id: string;
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  latest_price: number | null;
+  latest_price_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type StockTransactionType = 'BUY' | 'SELL';
+
+export interface StockTransaction {
+  id: string;
+  holding_id: string;
+  type: StockTransactionType;
+  date: string;
+  quantity: number;
+  price: number;
+  amount: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface StockHolding {
+  id: string;
+  user_id: string;
+  stock_id: string;
+  created_at: string;
+  stock: Stock;
+  transactions: StockTransaction[];
+}
+
+// Computed, client-facing summary for a stock holding
+export interface StockHoldingSummary {
+  id: string;
+  stock: Stock;
+  totalQuantity: number;
+  investedAmount: number;
+  avgPrice: number;
+  currentValue: number;
+  gainLoss: number;
+  gainLossPct: number;
+  transactions: StockTransaction[];
+}
+
+export interface StockPortfolioSummary {
+  totalInvested: number;
+  currentValue: number;
+  totalGainLoss: number;
+  totalGainLossPct: number;
+  holdings: StockHoldingSummary[];
+}
+
+// ----------------------------------------------------------------------
 // Expense tracker
 // ----------------------------------------------------------------------
 
@@ -91,23 +150,4 @@ export interface ExpenseSummary {
   netWithCarryForward: number; // carryForward + net — the running balance leaving this month
   categories: ExpenseCategory[];
   entries: ExpenseEntry[];
-}
-
-export interface BulkImportRowError {
-  row: number;
-  message: string;
-}
-
-export interface BulkImportResult {
-  imported: number;
-  skipped: number;
-  errors: BulkImportRowError[];
-  createdHeads: string[];
-}
-
-export interface FundBulkImportResult {
-  imported: number;
-  skipped: number;
-  errors: BulkImportRowError[];
-  createdFunds: string[];
 }
