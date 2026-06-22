@@ -151,3 +151,14 @@ export interface ExpenseSummary {
   categories: ExpenseCategory[];
   entries: ExpenseEntry[];
 }
+
+export interface BulkImportRowError {
+  row: number;
+  message: string;
+}
+
+export interface BulkImportResult {
+  imported: number;
+  skipped: number;
+  errors: BulkImportRowError[];
+}
