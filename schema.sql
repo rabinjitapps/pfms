@@ -59,3 +59,59 @@ create table if not exists nav_history (
 create index if not exists idx_transactions_holding on transactions(holding_id);
 create index if not exists idx_holdings_user on holdings(user_id);
 create index if not exists idx_nav_history_fund on nav_history(fund_id, date desc);
+
+-- ----------------------------------------------------------------------
+-- Stock tracker
+-- ----------------------------------------------------------------------
+
+-- Master list of stocks (shared across users, identified by ticker symbol,
+-- e.g. "RELIANCE.NS", "TCS.NS", "AAPL"). Mirrors `funds` but for equities,
+-- priced via Yahoo Finance instead of AMFI.
+create table if not exists stocks (
+  id uuid primary key default uuid_generate_v4(),
+  symbol text unique not null,      -- e.g. "RELIANCE.NS"
+  name text not null,
+  exchange text,
+  latest_price numeric(14,4),
+  latest_price_date date,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- A user's holding in a specific stock (aggregated position)
+create table if not exists stock_holdings (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references users(id) on delete cascade,
+  stock_id uuid not null references stocks(id) on delete cascade,
+  created_at timestamptz default now(),
+  unique (user_id, stock_id)
+);
+
+-- Individual buy/sell transactions — source of truth for quantity & invested amount
+create table if not exists stock_transactions (
+  id uuid primary key default uuid_generate_v4(),
+  holding_id uuid not null references stock_holdings(id) on delete cascade,
+  type text not null check (type in ('BUY', 'SELL')),
+  date date not null,
+  quantity numeric(16,4) not null check (quantity > 0),
+  price numeric(14,4) not null check (price > 0),
+  amount numeric(14,2) not null,     -- quantity * price at transaction time
+  notes text,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_stock_transactions_holding on stock_transactions(holding_id);
+create index if not exists idx_stock_holdings_user on stock_holdings(user_id);
+
+-- Daily price snapshots, mirrors nav_history — built up over time as
+-- refresh-price and update-price write to it, so a price chart for a
+-- stock can be drawn the same way as for a fund.
+create table if not exists stock_price_history (
+  id uuid primary key default uuid_generate_v4(),
+  stock_id uuid not null references stocks(id) on delete cascade,
+  date date not null,
+  price numeric(14,4) not null,
+  unique (stock_id, date)
+);
+
+create index if not exists idx_stock_price_history_stock on stock_price_history(stock_id, date desc);

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/refresh-nav",
       "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-stock-price",
+      "schedule": "30 18 * * *"
     }
   ]
 }
