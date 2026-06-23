@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import AppShell from './AppShell';
 import AddLoanModal from './AddLoanModal';
 import styles from './LoanTracker.module.css';
-import { Loan, LoanSummary, LoanPortfolioSummary } from '@/types';
+import { Loan, LoanSummary, LoanPortfolioSummary, LoanEmiMonth } from '@/types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -13,6 +13,7 @@ function buildLoanSummary(loan: Loan): LoanSummary {
   today.setHours(0, 0, 0, 0);
 
   const manuallyPaidMonths = new Set((loan.payments ?? []).map((p) => p.month));
+  const interestOnlyMonths = loan.interest_only_months ?? 0;
 
   const startDate = new Date(loan.emi_start_date);
   const schedule = [];
@@ -25,10 +26,13 @@ function buildLoanSummary(loan: Loan): LoanSummary {
       d < today && d.getFullYear() * 12 + d.getMonth() < today.getFullYear() * 12 + today.getMonth();
     const manually_paid = manuallyPaidMonths.has(monthStr);
     const is_paid = auto_paid || manually_paid;
+    const phase: LoanEmiMonth['phase'] = i < interestOnlyMonths ? 'interest_only' : 'emi';
+    const emi_amount = phase === 'interest_only' ? loan.interest_only_payment : loan.emi_amount;
 
     schedule.push({
       month: monthStr,
-      emi_amount: loan.emi_amount,
+      emi_amount,
+      phase,
       is_paid,
       manually_paid,
       is_future,
@@ -37,8 +41,10 @@ function buildLoanSummary(loan: Loan): LoanSummary {
 
   const paid_count = schedule.filter((s) => s.is_paid).length;
   const pending_count = loan.total_months - paid_count;
-  const total_amount_paid = paid_count * loan.emi_amount;
-  const total_amount_pending = pending_count * loan.emi_amount;
+  // Sum actual per-month amounts rather than paid_count * a single EMI, since
+  // flexi loans have a different amount during the interest-only phase.
+  const total_amount_paid = schedule.filter((s) => s.is_paid).reduce((sum, s) => sum + s.emi_amount, 0);
+  const total_amount_pending = schedule.filter((s) => !s.is_paid).reduce((sum, s) => sum + s.emi_amount, 0);
   const percent_complete = Math.round((paid_count / loan.total_months) * 100);
 
   // Debt-free = month of the final EMI (start date + total_months - 1)
@@ -54,6 +60,12 @@ function buildLoanSummary(loan: Loan): LoanSummary {
   const months_remaining = pending_count;
   const years_remaining = months_remaining / 12;
 
+  const nextDue = schedule.find((s) => !s.is_paid);
+  const in_interest_only_phase = nextDue ? nextDue.phase === 'interest_only' : false;
+  const interest_only_months_remaining = schedule.filter(
+    (s) => !s.is_paid && s.phase === 'interest_only'
+  ).length;
+
   return {
     loan,
     paid_count,
@@ -66,6 +78,8 @@ function buildLoanSummary(loan: Loan): LoanSummary {
     months_remaining,
     years_remaining,
     emi_schedule: schedule,
+    in_interest_only_phase,
+    interest_only_months_remaining,
   };
 }
 
@@ -73,10 +87,13 @@ function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
   const summaries = loans
     .map(buildLoanSummary)
     .sort((a, b) => a.pending_count - b.pending_count);
-  const totalMonthlyEmi = loans.reduce((s, l) => {
-    // Only count active loans (not yet fully paid)
-    const summary = buildLoanSummary(l);
-    return summary.pending_count > 0 ? s + l.emi_amount : s;
+  // "Total monthly EMI" should reflect what's actually due next month for
+  // each active loan — which, for a flexi loan still in its interest-only
+  // phase, is the (smaller) interest-only payment, not the post-conversion EMI.
+  const totalMonthlyEmi = summaries.reduce((s, ls) => {
+    if (ls.pending_count <= 0) return s;
+    const nextDue = ls.emi_schedule.find((m) => !m.is_paid);
+    return s + (nextDue ? nextDue.emi_amount : 0);
   }, 0);
   const totalOutstanding = summaries.reduce((s, ls) => s + ls.total_amount_pending, 0);
   return { loans: summaries, total_monthly_emi: totalMonthlyEmi, total_outstanding: totalOutstanding };
@@ -115,12 +132,10 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
 
 function MonthlyScheduleTable({
   schedule,
-  emi,
   onToggle,
   togglingMonth,
 }: {
   schedule: LoanSummary['emi_schedule'];
-  emi: number;
   onToggle: (month: string, nextPaid: boolean) => void;
   togglingMonth: string | null;
 }) {
@@ -163,11 +178,12 @@ function MonthlyScheduleTable({
                         : 'Click to mark as paid'
                     }
                     className={
-                      m.is_paid
+                      (m.is_paid
                         ? styles.scheduleCell + ' ' + styles.schedulePaid
                         : m.is_future
                         ? styles.scheduleCell + ' ' + styles.scheduleFuture
-                        : styles.scheduleCell + ' ' + styles.scheduleCurrent
+                        : styles.scheduleCell + ' ' + styles.scheduleCurrent) +
+                      (m.phase === 'interest_only' ? ' ' + styles.scheduleInterestOnly : '')
                     }
                     style={{
                       cursor: autoLocked ? 'default' : 'pointer',
@@ -178,8 +194,13 @@ function MonthlyScheduleTable({
                       color: 'inherit',
                     }}
                   >
-                    <span className={styles.scheduleCellMonth}>{monthName}</span>
-                    <span className={styles.scheduleCellAmount}>{fmtCurrency(emi)}</span>
+                    <span className={styles.scheduleCellMonth}>
+                      {monthName}
+                      {m.phase === 'interest_only' && (
+                        <span className={styles.ioBadge} title="Interest-only">IO</span>
+                      )}
+                    </span>
+                    <span className={styles.scheduleCellAmount}>{fmtCurrency(m.emi_amount)}</span>
                     <span className={styles.scheduleCellStatus}>
                       {m.manually_paid
                         ? '✓ paid (manual)'
@@ -227,6 +248,7 @@ function LoanCard({
       <div className={styles.loanCardHeader}>
         <div className={styles.loanCardTitle}>
           <h3 className={styles.loanName}>{loan.name}</h3>
+          {loan.loan_type === 'flexi' && <span className={styles.flexiBadge}>FLEXI</span>}
           <span className={styles.loanRate}>{loan.interest_rate.toFixed(2)}% p.a.</span>
         </div>
         <div className={styles.loanCardActions}>
@@ -264,14 +286,33 @@ function LoanCard({
           <span className={styles.metricLabel}>Principal</span>
           <span className={styles.metricValue}>{fmtCurrency(loan.principal)}</span>
         </div>
-        <div className={styles.metric}>
-          <span className={styles.metricLabel}>EMI / month</span>
-          <span className={styles.metricValue}>{fmtCurrency(loan.emi_amount)}</span>
-        </div>
+        {loan.loan_type === 'flexi' ? (
+          <>
+            <div className={styles.metric}>
+              <span className={styles.metricLabel}>Interest-only / month</span>
+              <span className={styles.metricValue}>{fmtCurrency(loan.interest_only_payment)}</span>
+            </div>
+            <div className={styles.metric}>
+              <span className={styles.metricLabel}>EMI thereafter</span>
+              <span className={styles.metricValue}>{fmtCurrency(loan.emi_amount)}</span>
+            </div>
+          </>
+        ) : (
+          <div className={styles.metric}>
+            <span className={styles.metricLabel}>EMI / month</span>
+            <span className={styles.metricValue}>{fmtCurrency(loan.emi_amount)}</span>
+          </div>
+        )}
         <div className={styles.metric}>
           <span className={styles.metricLabel}>Tenure</span>
           <span className={styles.metricValue}>
             {loan.tenure_value} {loan.tenure_unit}
+            {loan.loan_type === 'flexi' && loan.interest_only_months > 0 && (
+              <span className={styles.metricSub}>
+                {' '}
+                ({loan.interest_only_value} {loan.interest_only_unit} interest-only)
+              </span>
+            )}
           </span>
         </div>
         <div className={styles.metric}>
@@ -284,6 +325,14 @@ function LoanCard({
           </span>
         </div>
       </div>
+
+      {summary.in_interest_only_phase && (
+        <div className={styles.ioPhaseBanner}>
+          Currently in interest-only phase — {summary.interest_only_months_remaining}{' '}
+          {summary.interest_only_months_remaining === 1 ? 'month' : 'months'} left before EMI of{' '}
+          {fmtCurrency(loan.emi_amount)} kicks in.
+        </div>
+      )}
 
       {/* EMI progress */}
       <div className={styles.progressSection}>
@@ -332,7 +381,6 @@ function LoanCard({
       {expanded && (
         <MonthlyScheduleTable
           schedule={summary.emi_schedule}
-          emi={loan.emi_amount}
           togglingMonth={togglingMonth}
           onToggle={(month, nextPaid) => onTogglePayment(loan.id, month, nextPaid)}
         />
