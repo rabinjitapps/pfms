@@ -35,7 +35,7 @@ export async function POST(
   const { data: payment, error } = await supabaseAdmin
     .from('loan_payments')
     .upsert(
-      { loan_id: id, month, paid_at: new Date().toISOString() },
+      { loan_id: id, user_id: userId, month, paid_at: new Date().toISOString() },
       { onConflict: 'loan_id,month' }
     )
     .select('loan_id, month, paid_at')
