@@ -97,24 +97,32 @@ function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
   }, 0);
   const totalOutstanding = summaries.reduce((s, ls) => s + ls.total_amount_pending, 0);
 
-  // "Next month's EMI" looks one calendar month ahead of today — i.e. the
-  // EMI that will be due in the month *after* the current one — summed
-  // across every loan that still has a scheduled (unpaid) entry that month.
+  // Build a chronological forecast of every future month that still has at
+  // least one unpaid EMI due, summed across loans — this powers the
+  // "upcoming months" slider below the portfolio card.
   const today = new Date();
-  const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-  const nextMonthStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
-  const nextMonthLabel = nextMonthDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
-  const nextMonthEmi = summaries.reduce((s, ls) => {
-    const entry = ls.emi_schedule.find((m) => m.month === nextMonthStr && !m.is_paid);
-    return s + (entry ? entry.emi_amount : 0);
-  }, 0);
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const monthTotals = new Map<string, number>();
+  for (const ls of summaries) {
+    for (const m of ls.emi_schedule) {
+      if (m.is_paid) continue;
+      if (m.month <= currentMonthStr) continue; // strictly after the current month
+      monthTotals.set(m.month, (monthTotals.get(m.month) ?? 0) + m.emi_amount);
+    }
+  }
+  const upcomingMonths: LoanPortfolioSummary['upcoming_months'] = Array.from(monthTotals.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, amount]) => ({
+      month,
+      label: new Date(month + '-01').toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+      amount,
+    }));
 
   return {
     loans: summaries,
     total_monthly_emi: totalMonthlyEmi,
     total_outstanding: totalOutstanding,
-    next_month_emi: nextMonthEmi,
-    next_month_label: nextMonthLabel,
+    upcoming_months: upcomingMonths,
   };
 }
 
@@ -421,6 +429,7 @@ export default function LoanTracker({ displayName }: Props) {
   const [showModal, setShowModal] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
+  const [monthIndex, setMonthIndex] = useState(0);
 
   const fetchLoans = useCallback(async () => {
     try {
@@ -499,6 +508,10 @@ export default function LoanTracker({ displayName }: Props) {
 
   const portfolio = buildPortfolioSummary(loans);
 
+  useEffect(() => {
+    setMonthIndex((i) => Math.min(i, Math.max(0, portfolio.upcoming_months.length - 1)));
+  }, [portfolio.upcoming_months.length]);
+
   return (
     <AppShell active="loans" displayName={displayName}>
       <div className={styles.page}>
@@ -532,10 +545,36 @@ export default function LoanTracker({ displayName }: Props) {
                   </div>
                 </div>
               </div>
-              {portfolio.next_month_emi > 0 && (
-                <div className={styles.nextMonthNote}>
-                  <span className={styles.nextMonthLabel}>{portfolio.next_month_label} EMI</span>
-                  <span className={styles.nextMonthAmount}>{fmtCurrency(portfolio.next_month_emi)}</span>
+              {portfolio.upcoming_months.length > 0 && (
+                <div className={styles.nextMonthCard}>
+                  <button
+                    type="button"
+                    className={styles.nextMonthArrow}
+                    onClick={() => setMonthIndex((i) => Math.max(0, i - 1))}
+                    disabled={monthIndex === 0}
+                    aria-label="Previous month"
+                  >
+                    ‹
+                  </button>
+                  <div className={styles.nextMonthContent}>
+                    <span className={styles.nextMonthLabel}>
+                      {portfolio.upcoming_months[monthIndex].label} EMI
+                    </span>
+                    <span className={styles.nextMonthAmount}>
+                      {fmtCurrency(portfolio.upcoming_months[monthIndex].amount)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.nextMonthArrow}
+                    onClick={() =>
+                      setMonthIndex((i) => Math.min(portfolio.upcoming_months.length - 1, i + 1))
+                    }
+                    disabled={monthIndex === portfolio.upcoming_months.length - 1}
+                    aria-label="Next month"
+                  >
+                    ›
+                  </button>
                 </div>
               )}
             </>
