@@ -12,6 +12,8 @@ function buildLoanSummary(loan: Loan): LoanSummary {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const manuallyPaidMonths = new Set((loan.payments ?? []).map((p) => p.month));
+
   const startDate = new Date(loan.emi_start_date);
   const schedule = [];
 
@@ -19,14 +21,16 @@ function buildLoanSummary(loan: Loan): LoanSummary {
     const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
     const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const is_future = d > today;
-    const is_paid =
+    const auto_paid =
       d < today && d.getFullYear() * 12 + d.getMonth() < today.getFullYear() * 12 + today.getMonth();
+    const manually_paid = manuallyPaidMonths.has(monthStr);
+    const is_paid = auto_paid || manually_paid;
 
     schedule.push({
       month: monthStr,
       emi_amount: loan.emi_amount,
       is_paid,
-      manually_paid: false,
+      manually_paid,
       is_future,
     });
   }
@@ -106,10 +110,19 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
   );
 }
 
-function MonthlyScheduleTable({ schedule, emi }: { schedule: LoanSummary['emi_schedule']; emi: number }) {
+function MonthlyScheduleTable({
+  schedule,
+  emi,
+  onToggle,
+  togglingMonth,
+}: {
+  schedule: LoanSummary['emi_schedule'];
+  emi: number;
+  onToggle: (month: string, nextPaid: boolean) => void;
+  togglingMonth: string | null;
+}) {
   // Group by year
-  // const years: Record<string, { month: string; is_paid: boolean; is_future: boolean }[]> = {};
-  const years: Record<string, { month: string; emi_amount: number; is_paid: boolean; is_future: boolean }[]> = {};
+  const years: Record<string, LoanSummary['emi_schedule']> = {};
   for (const s of schedule) {
     const y = s.month.slice(0, 4);
     if (!years[y]) years[y] = [];
@@ -129,9 +142,23 @@ function MonthlyScheduleTable({ schedule, emi }: { schedule: LoanSummary['emi_sc
             <div className={styles.scheduleGrid}>
               {months.map((m) => {
                 const monthName = new Date(m.month + '-01').toLocaleString('en-IN', { month: 'short' });
+                // An auto-paid month (date already in the past) can't be un-toggled —
+                // only current/future months are manually togglable.
+                const autoLocked = m.is_paid && !m.manually_paid;
+                const isToggling = togglingMonth === m.month;
                 return (
-                  <div
+                  <button
                     key={m.month}
+                    type="button"
+                    disabled={autoLocked || isToggling}
+                    onClick={() => onToggle(m.month, !m.is_paid)}
+                    title={
+                      autoLocked
+                        ? 'Already counted as paid'
+                        : m.is_paid
+                        ? 'Click to unmark as paid'
+                        : 'Click to mark as paid'
+                    }
                     className={
                       m.is_paid
                         ? styles.scheduleCell + ' ' + styles.schedulePaid
@@ -139,13 +166,27 @@ function MonthlyScheduleTable({ schedule, emi }: { schedule: LoanSummary['emi_sc
                         ? styles.scheduleCell + ' ' + styles.scheduleFuture
                         : styles.scheduleCell + ' ' + styles.scheduleCurrent
                     }
+                    style={{
+                      cursor: autoLocked ? 'default' : 'pointer',
+                      opacity: isToggling ? 0.5 : 1,
+                      width: '100%',
+                      textAlign: 'left',
+                      font: 'inherit',
+                      color: 'inherit',
+                    }}
                   >
                     <span className={styles.scheduleCellMonth}>{monthName}</span>
                     <span className={styles.scheduleCellAmount}>{fmtCurrency(emi)}</span>
                     <span className={styles.scheduleCellStatus}>
-                      {m.is_paid ? '✓ paid' : m.is_future ? 'upcoming' : 'current'}
+                      {m.manually_paid
+                        ? '✓ paid (manual)'
+                        : m.is_paid
+                        ? '✓ paid'
+                        : m.is_future
+                        ? 'upcoming'
+                        : 'current'}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -160,13 +201,19 @@ function LoanCard({
   summary,
   onDelete,
   onEdit,
+  onTogglePayment,
+  togglingKey,
 }: {
   summary: LoanSummary;
   onDelete: (id: string) => void;
   onEdit: (loan: Loan) => void;
+  onTogglePayment: (loanId: string, month: string, nextPaid: boolean) => void;
+  togglingKey: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { loan } = summary;
+  const togglingMonth =
+    togglingKey && togglingKey.startsWith(loan.id + ':') ? togglingKey.slice(loan.id.length + 1) : null;
 
   const debtFreeDate = new Date(summary.debt_free_date);
   const debtFreeDateStr = debtFreeDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
@@ -280,7 +327,12 @@ function LoanCard({
       </button>
 
       {expanded && (
-        <MonthlyScheduleTable schedule={summary.emi_schedule} emi={loan.emi_amount} />
+        <MonthlyScheduleTable
+          schedule={summary.emi_schedule}
+          emi={loan.emi_amount}
+          togglingMonth={togglingMonth}
+          onToggle={(month, nextPaid) => onTogglePayment(loan.id, month, nextPaid)}
+        />
       )}
     </div>
   );
@@ -298,6 +350,7 @@ export default function LoanTracker({ displayName }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
+  const [togglingKey, setTogglingKey] = useState<string | null>(null);
 
   const fetchLoans = useCallback(async () => {
     try {
@@ -325,6 +378,52 @@ export default function LoanTracker({ displayName }: Props) {
       setLoans((prev) => prev.filter((l) => l.id !== id));
     } else {
       alert('Failed to delete loan.');
+    }
+  };
+
+  const handleTogglePayment = async (loanId: string, month: string, nextPaid: boolean) => {
+    const key = `${loanId}:${month}`;
+    setTogglingKey(key);
+
+    // Optimistic update
+    setLoans((prev) =>
+      prev.map((l) => {
+        if (l.id !== loanId) return l;
+        const payments = l.payments ?? [];
+        const nextPayments = nextPaid
+          ? [...payments.filter((p) => p.month !== month), { month, paid_at: new Date().toISOString() }]
+          : payments.filter((p) => p.month !== month);
+        return { ...l, payments: nextPayments };
+      })
+    );
+
+    try {
+      const res = nextPaid
+        ? await fetch(`/api/loans/${loanId}/payments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ month }),
+          })
+        : await fetch(`/api/loans/${loanId}/payments?month=${encodeURIComponent(month)}`, {
+            method: 'DELETE',
+          });
+
+      if (!res.ok) throw new Error('Request failed');
+    } catch {
+      // Roll back on failure
+      setLoans((prev) =>
+        prev.map((l) => {
+          if (l.id !== loanId) return l;
+          const payments = l.payments ?? [];
+          const rolledBack = nextPaid
+            ? payments.filter((p) => p.month !== month)
+            : [...payments.filter((p) => p.month !== month), { month, paid_at: new Date().toISOString() }];
+          return { ...l, payments: rolledBack };
+        })
+      );
+      alert('Failed to update payment status. Please try again.');
+    } finally {
+      setTogglingKey(null);
     }
   };
 
@@ -392,6 +491,8 @@ export default function LoanTracker({ displayName }: Props) {
                   summary={summary}
                   onDelete={handleDelete}
                   onEdit={(loan) => { setEditingLoan(loan); setShowModal(true); }}
+                  onTogglePayment={handleTogglePayment}
+                  togglingKey={togglingKey}
                 />
               ))}
             </div>
