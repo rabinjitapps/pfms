@@ -210,6 +210,10 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                 <p className={styles.summaryValueSmall}>{portfolio.holdings.length}</p>
               </div>
               <div>
+                <p className={styles.summaryLabel}>Total redeemed</p>
+                <p className={styles.summaryValueSmall}>₹{formatINR(portfolio.totalRedeemed)}</p>
+              </div>
+              <div>
                 <p className={styles.summaryLabel}>XIRR (annualized)</p>
                 <p
                   className={
