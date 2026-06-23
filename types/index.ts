@@ -275,4 +275,6 @@ export interface LoanPortfolioSummary {
   loans: LoanSummary[];
   total_monthly_emi: number;
   total_outstanding: number;
+  next_month_emi: number;
+  next_month_label: string; // e.g. "August 2026"
 }
