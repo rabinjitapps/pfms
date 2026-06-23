@@ -473,10 +473,12 @@
 
 .dayInflow {
   color: var(--ledger-green);
+  font-weight: 700;
 }
 
 .dayOutflow {
   color: var(--brick);
+  font-weight: 700;
 }
 
 .entryRow {
