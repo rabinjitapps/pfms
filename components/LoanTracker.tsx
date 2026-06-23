@@ -48,9 +48,10 @@ function buildLoanSummary(loan: Loan): LoanSummary {
     1
   );
 
-  const diffMs = debtFreeDate.getTime() - today.getTime();
-  const totalDaysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-  const months_remaining = Math.ceil(totalDaysRemaining / 30.44);
+  // Derived from the actual count of unpaid EMIs (not day-math), so this
+  // always agrees with "X of Y paid" above — day-based division by ~30.44
+  // and rounding up overcounts whenever today isn't on a month boundary.
+  const months_remaining = pending_count;
   const years_remaining = months_remaining / 12;
 
   return {
