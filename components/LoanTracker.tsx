@@ -70,7 +70,9 @@ function buildLoanSummary(loan: Loan): LoanSummary {
 }
 
 function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
-  const summaries = loans.map(buildLoanSummary);
+  const summaries = loans
+    .map(buildLoanSummary)
+    .sort((a, b) => a.pending_count - b.pending_count);
   const totalMonthlyEmi = loans.reduce((s, l) => {
     // Only count active loans (not yet fully paid)
     const summary = buildLoanSummary(l);
