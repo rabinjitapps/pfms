@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { PortfolioSummary, StockPortfolioSummary, ExpenseSummary, ExpenseAnalysis, Loan } from '@/types';
-import { getUpcomingEmis, UpcomingEmi } from '@/lib/loanSchedule';
+import { getUpcomingEmis, UpcomingEmi, buildPortfolioSummary } from '@/lib/loanSchedule';
 import AppShell from './AppShell';
 import styles from './Overview.module.css';
 
@@ -96,6 +96,11 @@ export default function Overview({ displayName }: { displayName: string }) {
   const upcomingEmis = useMemo<UpcomingEmi[]>(() => {
     if (loans.length === 0) return [];
     return getUpcomingEmis(loans, 6);
+  }, [loans]);
+
+  const loanPortfolio = useMemo(() => {
+    if (loans.length === 0) return null;
+    return buildPortfolioSummary(loans);
   }, [loans]);
 
   const fundRankings = useMemo(() => {
@@ -198,6 +203,19 @@ export default function Overview({ displayName }: { displayName: string }) {
                 Net this month: {(expenses?.net ?? 0) >= 0 ? '+' : '−'}₹{formatINR(Math.abs(expenses?.net ?? 0))}
               </p>
             </Link>
+
+            {loanPortfolio && (
+              <Link href="/loans" className={styles.summaryCard}>
+                <p className={styles.cardLabel}>Loan outstanding</p>
+                <p className={styles.cardValueNegative}>₹{formatINR(loanPortfolio.total_outstanding)}</p>
+                <p className={styles.cardSubNeutral}>
+                  {loans.length} loan{loans.length === 1 ? '' : 's'}
+                </p>
+                <p className={styles.cardMeta}>
+                  Monthly EMI: ₹{formatINR(loanPortfolio.total_monthly_emi)}
+                </p>
+              </Link>
+            )}
           </div>
 
           {upcomingEmis.length > 0 && (
