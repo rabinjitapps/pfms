@@ -291,6 +291,11 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                         Held {age.label} <span className={styles.holdingDate}>({age.days} days)</span>
                       </p>
                     )}
+                    {h.redeemedAmount > 0 && (
+                      <p className={styles.holdingMetaSecondary}>
+                        Redeemed ₹{formatINR(h.redeemedAmount)}
+                      </p>
+                    )}
                   </div>
 
                   <div className={styles.figureCell}>
