@@ -288,7 +288,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                     </p>
                     {age && (
                       <p className={styles.holdingMetaSecondary}>
-                        <b>Held {age.label} <span className={styles.holdingDate}>({age.days} days)</b></span>
+                        <b>Held {age.label} <span className={styles.holdingDate}>({age.days} days)</span></b>
                       </p>
                     )}
                     {h.redeemedAmount > 0 && (
