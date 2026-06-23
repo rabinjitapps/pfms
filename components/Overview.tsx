@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { PortfolioSummary, StockPortfolioSummary, ExpenseSummary } from '@/types';
+import { PortfolioSummary, StockPortfolioSummary, ExpenseSummary, ExpenseAnalysis, Loan } from '@/types';
+import { getUpcomingEmis, UpcomingEmi } from '@/lib/loanSchedule';
 import AppShell from './AppShell';
 import styles from './Overview.module.css';
 
@@ -21,6 +22,11 @@ function formatMonthLabel(month: string): string {
   return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
 
+function formatDueDate(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 interface TopMover {
   name: string;
   gainLossPct: number;
@@ -34,31 +40,39 @@ export default function Overview({ displayName }: { displayName: string }) {
   const [funds, setFunds] = useState<PortfolioSummary | null>(null);
   const [stocks, setStocks] = useState<StockPortfolioSummary | null>(null);
   const [expenses, setExpenses] = useState<ExpenseSummary | null>(null);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [expenseHeads, setExpenseHeads] = useState<ExpenseAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const [fundsRes, stocksRes, expensesRes] = await Promise.all([
+      const [fundsRes, stocksRes, expensesRes, loansRes, headsRes] = await Promise.all([
         fetch('/api/holdings'),
         fetch('/api/stock-holdings'),
         fetch('/api/expense-entries'),
+        fetch('/api/loans'),
+        fetch('/api/expense-analysis?periodType=month&direction=OUTFLOW'),
       ]);
 
       if (!fundsRes.ok || !stocksRes.ok || !expensesRes.ok) {
         setError('Could not load all of your data. Some figures below may be missing.');
       }
 
-      const [fundsData, stocksData, expensesData] = await Promise.all([
+      const [fundsData, stocksData, expensesData, loansData, headsData] = await Promise.all([
         fundsRes.ok ? fundsRes.json() : null,
         stocksRes.ok ? stocksRes.json() : null,
         expensesRes.ok ? expensesRes.json() : null,
+        loansRes.ok ? loansRes.json() : null,
+        headsRes.ok ? headsRes.json() : null,
       ]);
 
       setFunds(fundsData);
       setStocks(stocksData);
       setExpenses(expensesData);
+      setLoans(loansData?.loans ?? []);
+      setExpenseHeads(headsData);
     } catch {
       setError('Could not reach the server.');
     } finally {
@@ -79,18 +93,45 @@ export default function Overview({ displayName }: { displayName: string }) {
   const gainLossTotal = (funds?.totalGainLoss ?? 0) + (stocks?.totalGainLoss ?? 0);
   const gainLossPositive = gainLossTotal >= 0;
 
-  const topMovers = useMemo(() => {
-    const movers: TopMover[] = [];
-    for (const h of funds?.holdings ?? []) {
-      movers.push({ name: h.fund.name, gainLossPct: h.gainLossPct, gainLoss: h.gainLoss, href: '/' });
-    }
-    for (const h of stocks?.holdings ?? []) {
-      movers.push({ name: h.stock.name, gainLossPct: h.gainLossPct, gainLoss: h.gainLoss, href: '/stocks' });
-    }
+  const upcomingEmis = useMemo<UpcomingEmi[]>(() => {
+    if (loans.length === 0) return [];
+    return getUpcomingEmis(loans, 6);
+  }, [loans]);
+
+  const fundRankings = useMemo(() => {
+    const movers: TopMover[] = (funds?.holdings ?? []).map((h) => ({
+      name: h.fund.name,
+      gainLossPct: h.gainLossPct,
+      gainLoss: h.gainLoss,
+      href: '/',
+    }));
+    const sorted = [...movers].sort((a, b) => b.gainLossPct - a.gainLossPct);
+    const best = sorted.slice(0, 3);
+    // Worst 3, taken from the bottom — but never re-using a fund already
+    // shown in "best" when there are fewer than 6 funds total.
+    const worstStart = Math.max(best.length, sorted.length - 3);
+    const worst = sorted.slice(worstStart).reverse();
+    return { best, worst };
+  }, [funds]);
+
+  const stockRankings = useMemo(() => {
+    const movers: TopMover[] = (stocks?.holdings ?? []).map((h) => ({
+      name: h.stock.name,
+      gainLossPct: h.gainLossPct,
+      gainLoss: h.gainLoss,
+      href: '/stocks',
+    }));
     if (movers.length === 0) return { best: null, worst: null };
     const sorted = [...movers].sort((a, b) => b.gainLossPct - a.gainLossPct);
-    return { best: sorted[0], worst: sorted[sorted.length - 1] };
-  }, [funds, stocks]);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    return { best, worst: worst === best ? null : worst };
+  }, [stocks]);
+
+  const topExpenseHeads = useMemo(() => {
+    if (!expenseHeads) return [];
+    return [...expenseHeads.totals].sort((a, b) => b.total - a.total).slice(0, 5);
+  }, [expenseHeads]);
 
   if (loading) {
     return (
@@ -159,32 +200,110 @@ export default function Overview({ displayName }: { displayName: string }) {
             </Link>
           </div>
 
-          {(topMovers.best || topMovers.worst) && (
+          {upcomingEmis.length > 0 && (
             <section className={styles.moversSection}>
-              <p className={styles.sectionHeading}>Top movers</p>
-              <div className={styles.moversGrid}>
-                {topMovers.best && (
-                  <Link href={topMovers.best.href} className={styles.moverCard}>
-                    <span className={styles.moverTag}>Best performer</span>
-                    <span className={styles.moverName}>{topMovers.best.name}</span>
+              <p className={styles.sectionHeading}>Upcoming loan EMIs</p>
+              <div className={styles.emiList}>
+                {upcomingEmis.map((emi, i) => (
+                  <Link
+                    href="/loans"
+                    key={`${emi.loanId}-${emi.date}`}
+                    className={styles.emiRow}
+                  >
+                    <span className={styles.emiDate}>{formatDueDate(emi.date)}</span>
+                    <span className={styles.emiName}>
+                      {emi.loanName}
+                      {emi.phase === 'interest_only' && (
+                        <span className={styles.emiPhaseTag}>Interest-only</span>
+                      )}
+                    </span>
+                    <span className={styles.emiAmount}>₹{formatINR(emi.amount)}</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {fundRankings.best.length > 0 && (
+            <section className={styles.moversSection}>
+              <p className={styles.sectionHeading}>Best performing mutual funds</p>
+              <div className={styles.rankGrid}>
+                {fundRankings.best.map((m) => (
+                  <Link href={m.href} key={`fund-best-${m.name}`} className={styles.moverCard}>
+                    <span className={styles.moverName}>{m.name}</span>
                     <span className={styles.moverPctPositive}>
-                      {topMovers.best.gainLossPct >= 0 ? '+' : ''}{topMovers.best.gainLossPct.toFixed(2)}%
+                      {m.gainLossPct >= 0 ? '+' : ''}{m.gainLossPct.toFixed(2)}%
+                    </span>
+                    <span className={styles.cardMeta}>
+                      {m.gainLoss >= 0 ? '+' : ''}₹{formatINR(m.gainLoss)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {fundRankings.worst.length > 0 && (
+            <section className={styles.moversSection}>
+              <p className={styles.sectionHeading}>Worst performing mutual funds</p>
+              <div className={styles.rankGrid}>
+                {fundRankings.worst.map((m) => (
+                  <Link href={m.href} key={`fund-worst-${m.name}`} className={styles.moverCard}>
+                    <span className={styles.moverName}>{m.name}</span>
+                    <span className={m.gainLossPct >= 0 ? styles.moverPctPositive : styles.moverPctNegative}>
+                      {m.gainLossPct >= 0 ? '+' : ''}{m.gainLossPct.toFixed(2)}%
+                    </span>
+                    <span className={styles.cardMeta}>
+                      {m.gainLoss >= 0 ? '+' : ''}₹{formatINR(m.gainLoss)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {(stockRankings.best || stockRankings.worst) && (
+            <section className={styles.moversSection}>
+              <p className={styles.sectionHeading}>Stock performance</p>
+              <div className={styles.moversGrid}>
+                {stockRankings.best && (
+                  <Link href={stockRankings.best.href} className={styles.moverCard}>
+                    <span className={styles.moverTag}>Best performing stock</span>
+                    <span className={styles.moverName}>{stockRankings.best.name}</span>
+                    <span className={styles.moverPctPositive}>
+                      {stockRankings.best.gainLossPct >= 0 ? '+' : ''}{stockRankings.best.gainLossPct.toFixed(2)}%
                     </span>
                   </Link>
                 )}
-                {topMovers.worst && topMovers.worst !== topMovers.best && (
-                  <Link href={topMovers.worst.href} className={styles.moverCard}>
-                    <span className={styles.moverTag}>Needs attention</span>
-                    <span className={styles.moverName}>{topMovers.worst.name}</span>
+                {stockRankings.worst && (
+                  <Link href={stockRankings.worst.href} className={styles.moverCard}>
+                    <span className={styles.moverTag}>Worst performing stock</span>
+                    <span className={styles.moverName}>{stockRankings.worst.name}</span>
                     <span
                       className={
-                        topMovers.worst.gainLossPct >= 0 ? styles.moverPctPositive : styles.moverPctNegative
+                        stockRankings.worst.gainLossPct >= 0 ? styles.moverPctPositive : styles.moverPctNegative
                       }
                     >
-                      {topMovers.worst.gainLossPct >= 0 ? '+' : ''}{topMovers.worst.gainLossPct.toFixed(2)}%
+                      {stockRankings.worst.gainLossPct >= 0 ? '+' : ''}{stockRankings.worst.gainLossPct.toFixed(2)}%
                     </span>
                   </Link>
                 )}
+              </div>
+            </section>
+          )}
+
+          {topExpenseHeads.length > 0 && (
+            <section className={styles.moversSection}>
+              <p className={styles.sectionHeading}>
+                Top expense heads &middot; {expenseHeads ? formatMonthLabel(expenseHeads.period) : ''}
+              </p>
+              <div className={styles.expenseHeadGrid}>
+                {topExpenseHeads.map((t) => (
+                  <Link href="/expense-analysis" key={t.categoryId} className={styles.summaryCard}>
+                    <p className={styles.cardLabel}>{t.categoryName}</p>
+                    <p className={styles.cardValueNegative}>₹{formatINR(t.total)}</p>
+                  </Link>
+                ))}
               </div>
             </section>
           )}

@@ -209,6 +209,88 @@
   gap: 14px;
 }
 
+/* ----------------------------------------------------------------
+   Upcoming loan EMIs (date-wise)
+   ---------------------------------------------------------------- */
+.emiList {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.emiRow {
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--hairline);
+  transition: background 0.15s ease;
+}
+
+.emiRow:last-child {
+  border-bottom: none;
+}
+
+.emiRow:hover {
+  background: var(--paper);
+}
+
+.emiDate {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.emiName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.emiPhaseTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--brass);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.emiAmount {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* ----------------------------------------------------------------
+   Best/worst fund & expense head grids (3-up / 5-up cards)
+   ---------------------------------------------------------------- */
+.rankGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.expenseHeadGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+
 .moverCard {
   display: flex;
   flex-direction: column;
@@ -357,6 +439,23 @@
 
   .moversGrid {
     grid-template-columns: 1fr;
+  }
+
+  .rankGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .expenseHeadGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .emiRow {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .emiAmount {
+    text-align: left;
   }
 
   .cashFlowGrid {
