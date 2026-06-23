@@ -32,6 +32,7 @@ function summarize(holding: Holding): HoldingSummary {
     currentValue,
     gainLoss,
     gainLossPct,
+    redeemedAmount: sellAmount,
     transactions: holding.transactions,
   };
 }
@@ -53,29 +54,22 @@ export async function GET() {
   }
 
   const holdings = (data ?? []) as unknown as Holding[];
-  // const summaries = holdings
-  //   .map(summarize)
-  //   // Only hide holdings that are genuinely closed out (units net to ~0).
-  //   // Negative units mean a data problem (e.g. a sell that exceeded what
-  //   // was held) and should stay visible so it can be spotted and fixed,
-  //   // rather than silently disappearing from the list.
-  //   .filter((h) => Math.abs(h.totalUnits) > 0.0001 || h.transactions.length === 0)
-  //   .sort((a, b) => b.currentValue - a.currentValue);
-
   const summaries = holdings
-  .map(summarize)
-  .sort((a, b) => b.currentValue - a.currentValue);
+    .map(summarize)
+    .sort((a, b) => b.currentValue - a.currentValue);
 
   const totalInvested = summaries.reduce((sum, h) => sum + h.investedAmount, 0);
   const currentValue = summaries.reduce((sum, h) => sum + h.currentValue, 0);
   const totalGainLoss = currentValue - totalInvested;
   const totalGainLossPct = totalInvested > 0 ? (totalGainLoss / totalInvested) * 100 : 0;
+  const totalRedeemed = summaries.reduce((sum, h) => sum + h.redeemedAmount, 0);
 
   const portfolio: PortfolioSummary = {
     totalInvested,
     currentValue,
     totalGainLoss,
     totalGainLossPct,
+    totalRedeemed,
     holdings: summaries,
   };
 
