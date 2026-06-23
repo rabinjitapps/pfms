@@ -107,7 +107,8 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
 
 function MonthlyScheduleTable({ schedule, emi }: { schedule: LoanSummary['emi_schedule']; emi: number }) {
   // Group by year
-  const years: Record<string, { month: string; is_paid: boolean; is_future: boolean }[]> = {};
+  // const years: Record<string, { month: string; is_paid: boolean; is_future: boolean }[]> = {};
+  const years: Record<string, { month: string; emi_amount: number; is_paid: boolean; is_future: boolean }[]> = {};
   for (const s of schedule) {
     const y = s.month.slice(0, 4);
     if (!years[y]) years[y] = [];
