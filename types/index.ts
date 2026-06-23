@@ -209,17 +209,30 @@ export interface FundBulkImportResult {
 
 export type LoanTenureUnit = 'months' | 'years';
 
+// 'standard' = flat EMI for the whole tenure (rate is back-calculated from EMI).
+// 'flexi'    = interest-only for an initial period, then converts to EMI for
+//              the remaining tenure (rate is entered directly; both the
+//              interest-only installment and the post-conversion EMI are
+//              derived from it).
+export type LoanType = 'standard' | 'flexi';
+
 export interface Loan {
   id: string;
   user_id: string;
   name: string;
+  loan_type: LoanType;
   principal: number;
-  emi_amount: number;
+  emi_amount: number;     // standard: the flat EMI. flexi: the EMI for the post-interest-only phase.
   tenure_value: number;
   tenure_unit: LoanTenureUnit;
   emi_start_date: string; // YYYY-MM-DD
   total_months: number;   // derived: tenure_value * (unit === 'years' ? 12 : 1)
-  interest_rate: number;  // annual %, auto-calculated from EMI formula
+  interest_rate: number;  // annual %. standard: auto-calculated from EMI formula. flexi: entered directly.
+  // Flexi-only fields (0 / 'years' for standard loans):
+  interest_only_value: number;        // raw value as entered, e.g. 2
+  interest_only_unit: LoanTenureUnit; // unit for interest_only_value
+  interest_only_months: number;       // derived: interest_only_value in months
+  interest_only_payment: number;      // monthly interest-only installment during the moratorium
   created_at: string;
   updated_at: string;
   payments?: LoanPayment[]; // manually-marked-paid months, attached by GET /api/loans
@@ -231,9 +244,12 @@ export interface LoanPayment {
   paid_at: string; // ISO timestamp
 }
 
+export type LoanEmiPhase = 'interest_only' | 'emi';
+
 export interface LoanEmiMonth {
   month: string;        // YYYY-MM
   emi_amount: number;
+  phase: LoanEmiPhase;      // which part of the loan this month belongs to
   is_paid: boolean;        // auto (date-based) OR manually marked
   manually_paid: boolean;  // explicitly toggled by user
   is_future: boolean;
@@ -251,6 +267,8 @@ export interface LoanSummary {
   months_remaining: number;
   years_remaining: number;
   emi_schedule: LoanEmiMonth[];
+  in_interest_only_phase: boolean; // true if the current/next-due month is still interest-only
+  interest_only_months_remaining: number;
 }
 
 export interface LoanPortfolioSummary {
