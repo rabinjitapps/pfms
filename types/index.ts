@@ -202,3 +202,51 @@ export interface FundBulkImportResult {
   errors: BulkImportRowError[];
   createdFunds: string[]; // names of funds auto-created during this import
 }
+
+// ----------------------------------------------------------------------
+// Loan tracker
+// ----------------------------------------------------------------------
+
+export type LoanTenureUnit = 'months' | 'years';
+
+export interface Loan {
+  id: string;
+  user_id: string;
+  name: string;
+  principal: number;
+  emi_amount: number;
+  tenure_value: number;
+  tenure_unit: LoanTenureUnit;
+  emi_start_date: string; // YYYY-MM-DD
+  total_months: number;   // derived: tenure_value * (unit === 'years' ? 12 : 1)
+  interest_rate: number;  // annual %, auto-calculated from EMI formula
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoanEmiMonth {
+  month: string;      // YYYY-MM
+  emi_amount: number;
+  is_paid: boolean;
+  is_future: boolean;
+}
+
+export interface LoanSummary {
+  loan: Loan;
+  paid_count: number;
+  pending_count: number;
+  total_emis: number;
+  total_amount_paid: number;
+  total_amount_pending: number;
+  percent_complete: number;
+  debt_free_date: string; // ISO date of last EMI
+  months_remaining: number;
+  years_remaining: number;
+  emi_schedule: LoanEmiMonth[];
+}
+
+export interface LoanPortfolioSummary {
+  loans: LoanSummary[];
+  total_monthly_emi: number;
+  total_outstanding: number;
+}
