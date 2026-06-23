@@ -224,10 +224,16 @@ export interface Loan {
   updated_at: string;
 }
 
+export interface LoanPayment {
+  month: string;   // YYYY-MM
+  paid_at: string; // ISO timestamp
+}
+
 export interface LoanEmiMonth {
-  month: string;      // YYYY-MM
+  month: string;        // YYYY-MM
   emi_amount: number;
-  is_paid: boolean;
+  is_paid: boolean;        // auto (date-based) OR manually marked
+  manually_paid: boolean;  // explicitly toggled by user
   is_future: boolean;
 }
 
