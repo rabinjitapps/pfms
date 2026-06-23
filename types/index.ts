@@ -43,6 +43,7 @@ export interface HoldingSummary {
   currentValue: number;
   gainLoss: number;
   gainLossPct: number;
+  redeemedAmount: number;
   transactions: Transaction[];
 }
 
@@ -51,6 +52,7 @@ export interface PortfolioSummary {
   currentValue: number;
   totalGainLoss: number;
   totalGainLossPct: number;
+  totalRedeemed: number;
   holdings: HoldingSummary[];
 }
 
