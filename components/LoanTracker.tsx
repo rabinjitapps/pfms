@@ -26,6 +26,7 @@ function buildLoanSummary(loan: Loan): LoanSummary {
       month: monthStr,
       emi_amount: loan.emi_amount,
       is_paid,
+      manually_paid: false,
       is_future,
     });
   }
