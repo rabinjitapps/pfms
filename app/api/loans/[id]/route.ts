@@ -1,23 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getCurrentUserId } from '@/lib/session';
-import { LoanTenureUnit } from '@/types';
-
-function calcInterestRate(principal: number, emi: number, totalMonths: number): number {
-  if (emi * totalMonths <= principal) return 0;
-  let r = 0.01;
-  for (let i = 0; i < 100; i++) {
-    const pow = Math.pow(1 + r, totalMonths);
-    const f = (principal * r * pow) / (pow - 1) - emi;
-    const df =
-      (principal * pow * (1 + r * totalMonths - pow + r * totalMonths * (pow - 1))) /
-      Math.pow(pow - 1, 2);
-    const rNew = r - f / df;
-    if (Math.abs(rNew - r) < 1e-10) { r = rNew; break; }
-    r = rNew;
-  }
-  return Math.round(r * 12 * 10000) / 100;
-}
+import { LoanTenureUnit, LoanType } from '@/types';
+import { calcInterestRate, calcEmiFromRate, calcInterestOnlyPayment } from '@/lib/loanMath';
 
 export async function DELETE(
   _req: NextRequest,
@@ -67,18 +52,69 @@ export async function PATCH(
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const body = await req.json();
-  const { name, principal, emi_amount, tenure_value, tenure_unit, emi_start_date } = body;
+  const { name, principal, tenure_value, tenure_unit, emi_start_date, loan_type } = body;
+
+  const loanType: LoanType = (loan_type ?? existing.loan_type) === 'flexi' ? 'flexi' : 'standard';
 
   const principalNum = principal != null ? Number(principal) : existing.principal;
-  const emiNum = emi_amount != null ? Number(emi_amount) : existing.emi_amount;
   const tenureNum = tenure_value != null ? Number(tenure_value) : existing.tenure_value;
-  const unit: LoanTenureUnit =
-    tenure_unit ?? existing.tenure_unit;
+  const unit: LoanTenureUnit = tenure_unit ?? existing.tenure_unit;
   const totalMonths = unit === 'years' ? tenureNum * 12 : tenureNum;
-  const interestRate = calcInterestRate(principalNum, emiNum, totalMonths);
+
+  let emiNum: number;
+  let interestRate: number;
+  let interestOnlyValue = 0;
+  let interestOnlyUnit: LoanTenureUnit = 'years';
+  let interestOnlyMonths = 0;
+  let interestOnlyPayment = 0;
+
+  if (loanType === 'flexi') {
+    const rateNum =
+      body.interest_rate != null ? Number(body.interest_rate) : existing.interest_rate;
+    if (!rateNum || rateNum <= 0) {
+      return NextResponse.json(
+        { error: 'Interest rate must be positive for a flexi loan' },
+        { status: 400 }
+      );
+    }
+    interestOnlyUnit =
+      (body.interest_only_unit ?? existing.interest_only_unit) as LoanTenureUnit;
+    if (!['months', 'years'].includes(interestOnlyUnit)) {
+      return NextResponse.json({ error: 'Invalid interest-only unit' }, { status: 400 });
+    }
+    interestOnlyValue =
+      body.interest_only_value != null
+        ? Number(body.interest_only_value)
+        : existing.interest_only_value;
+    if (!(interestOnlyValue >= 0)) {
+      return NextResponse.json({ error: 'Interest-only period must be zero or positive' }, { status: 400 });
+    }
+    interestOnlyMonths =
+      interestOnlyUnit === 'years' ? Math.round(interestOnlyValue * 12) : Math.round(interestOnlyValue);
+
+    if (interestOnlyMonths >= totalMonths) {
+      return NextResponse.json(
+        { error: 'Interest-only period must be shorter than the total tenure' },
+        { status: 400 }
+      );
+    }
+
+    const amortizingMonths = totalMonths - interestOnlyMonths;
+    interestRate = rateNum;
+    emiNum = calcEmiFromRate(principalNum, rateNum, amortizingMonths);
+    interestOnlyPayment = calcInterestOnlyPayment(principalNum, rateNum);
+  } else {
+    emiNum =
+      body.emi_amount != null ? Number(body.emi_amount) : existing.emi_amount;
+    if (emiNum <= 0) {
+      return NextResponse.json({ error: 'Amounts and tenure must be positive' }, { status: 400 });
+    }
+    interestRate = calcInterestRate(principalNum, emiNum, totalMonths);
+  }
 
   const updates: Record<string, unknown> = {
     name: (name ?? existing.name).trim(),
+    loan_type: loanType,
     principal: Math.round(principalNum * 100) / 100,
     emi_amount: Math.round(emiNum * 100) / 100,
     tenure_value: tenureNum,
@@ -86,6 +122,10 @@ export async function PATCH(
     emi_start_date: emi_start_date ?? existing.emi_start_date,
     total_months: totalMonths,
     interest_rate: interestRate,
+    interest_only_value: interestOnlyValue,
+    interest_only_unit: interestOnlyUnit,
+    interest_only_months: interestOnlyMonths,
+    interest_only_payment: interestOnlyPayment,
     updated_at: new Date().toISOString(),
   };
 
