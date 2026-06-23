@@ -153,6 +153,27 @@ export interface ExpenseSummary {
 }
 
 // ----------------------------------------------------------------------
+// Expense analysis (head-wise bar chart for a month or a year)
+// ----------------------------------------------------------------------
+
+export type AnalysisPeriodType = 'month' | 'year';
+
+export interface ExpenseHeadTotal {
+  categoryId: string;
+  categoryName: string;
+  total: number;
+}
+
+export interface ExpenseAnalysis {
+  periodType: AnalysisPeriodType;
+  period: string; // 'YYYY-MM' for month, 'YYYY' for year
+  direction: ExpenseDirection;
+  availableYears: string[]; // YYYY[], sorted ascending, derived from availableMonths
+  totals: ExpenseHeadTotal[]; // only heads with a nonzero total in this period, sorted descending
+  grandTotal: number;
+}
+
+// ----------------------------------------------------------------------
 // Bulk import (Excel upload)
 // ----------------------------------------------------------------------
 
