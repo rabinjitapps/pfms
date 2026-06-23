@@ -46,7 +46,30 @@ export async function GET() {
     return NextResponse.json({ error: 'Failed to fetch loans' }, { status: 500 });
   }
 
-  return NextResponse.json({ loans: data ?? [] });
+  const loans = data ?? [];
+  const loanIds = loans.map((l) => l.id);
+
+  if (loanIds.length > 0) {
+    const { data: payments, error: paymentsError } = await supabaseAdmin
+      .from('loan_payments')
+      .select('loan_id, month, paid_at')
+      .in('loan_id', loanIds);
+
+    if (paymentsError) {
+      console.error('Failed to fetch loan payments:', paymentsError);
+    } else {
+      const byLoan: Record<string, { loan_id: string; month: string; paid_at: string }[]> = {};
+      for (const p of payments ?? []) {
+        if (!byLoan[p.loan_id]) byLoan[p.loan_id] = [];
+        byLoan[p.loan_id].push(p);
+      }
+      for (const loan of loans) {
+        loan.payments = byLoan[loan.id] ?? [];
+      }
+    }
+  }
+
+  return NextResponse.json({ loans });
 }
 
 export async function POST(req: NextRequest) {
