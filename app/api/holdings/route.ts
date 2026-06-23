@@ -9,14 +9,49 @@ function summarize(holding: Holding): HoldingSummary {
 
   const buyUnits = buys.reduce((sum, t) => sum + Number(t.units), 0);
   const sellUnits = sells.reduce((sum, t) => sum + Number(t.units), 0);
+  // Kept as buyUnits - sellUnits (not derived from the lots below) so a
+  // sell that exceeds everything bought still surfaces as a negative
+  // number here — a data problem worth spotting, not hiding.
   const totalUnits = buyUnits - sellUnits;
 
-  const buyAmount = buys.reduce((sum, t) => sum + Number(t.amount), 0);
   const sellAmount = sells.reduce((sum, t) => sum + Number(t.amount), 0);
 
-  // Invested amount = cost basis still held (simple average-cost method)
-  const avgNav = buyUnits > 0 ? buyAmount / buyUnits : 0;
-  const investedAmount = totalUnits * avgNav;
+  // Invested amount = cost basis still held, using FIFO: each BUY opens
+  // a "lot", and SELLs consume the oldest open lots first. This mirrors
+  // how a person naturally thinks about which units they sold (and how
+  // Indian mutual fund capital-gains rules treat it), rather than
+  // smearing one sell across every lot via a simple average cost.
+  const chronological = [...holding.transactions].sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return a.created_at < b.created_at ? -1 : 1;
+  });
+
+  type Lot = { remainingUnits: number; costPerUnit: number };
+  const lots: Lot[] = [];
+
+  for (const t of chronological) {
+    const units = Number(t.units);
+    if (t.type === 'BUY') {
+      const costPerUnit = units > 0 ? Number(t.amount) / units : 0;
+      lots.push({ remainingUnits: units, costPerUnit });
+    } else {
+      let toSell = units;
+      for (const lot of lots) {
+        if (toSell <= 0) break;
+        if (lot.remainingUnits <= 0) continue;
+        const consumed = Math.min(lot.remainingUnits, toSell);
+        lot.remainingUnits -= consumed;
+        toSell -= consumed;
+      }
+      // If toSell > 0 here, this sell exceeded everything bought so far.
+      // There's no remaining cost to remove for the excess — the
+      // negative totalUnits above is what flags that data issue.
+    }
+  }
+
+  const remainingLotUnits = lots.reduce((sum, l) => sum + l.remainingUnits, 0);
+  const investedAmount = lots.reduce((sum, l) => sum + l.remainingUnits * l.costPerUnit, 0);
+  const avgNav = remainingLotUnits > 0 ? investedAmount / remainingLotUnits : 0;
 
   const currentNav = Number(holding.fund.latest_nav ?? 0);
   const currentValue = totalUnits * currentNav;
