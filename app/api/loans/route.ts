@@ -1,35 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getCurrentUserId } from '@/lib/session';
-import { Loan, LoanTenureUnit } from '@/types';
-
-/**
- * Calculate annual interest rate (%) from principal, EMI, and total months
- * using the standard EMI formula: EMI = P * r * (1+r)^n / ((1+r)^n - 1)
- * We solve for r numerically via Newton-Raphson iteration.
- */
-function calcInterestRate(principal: number, emi: number, totalMonths: number): number {
-  if (emi * totalMonths <= principal) {
-    // Zero-interest loan or bad inputs — just return 0
-    return 0;
-  }
-  // Initial guess: monthly rate
-  let r = 0.01;
-  for (let i = 0; i < 100; i++) {
-    const pow = Math.pow(1 + r, totalMonths);
-    const f = (principal * r * pow) / (pow - 1) - emi;
-    const df =
-      (principal * pow * (1 + r * totalMonths - pow + r * totalMonths * (pow - 1))) /
-      Math.pow(pow - 1, 2);
-    const rNew = r - f / df;
-    if (Math.abs(rNew - r) < 1e-10) {
-      r = rNew;
-      break;
-    }
-    r = rNew;
-  }
-  return Math.round(r * 12 * 10000) / 100; // annual % rounded to 2dp
-}
+import { LoanTenureUnit, LoanType } from '@/types';
+import { calcInterestRate, calcEmiFromRate, calcInterestOnlyPayment } from '@/lib/loanMath';
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -77,17 +50,30 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { name, principal, emi_amount, tenure_value, tenure_unit, emi_start_date } = body;
+  const {
+    name,
+    principal,
+    tenure_value,
+    tenure_unit,
+    emi_start_date,
+    loan_type,
+  } = body;
 
-  if (!name || !principal || !emi_amount || !tenure_value || !tenure_unit || !emi_start_date) {
+  const loanType: LoanType = loan_type === 'flexi' ? 'flexi' : 'standard';
+
+  if (!name || !principal || !tenure_value || !tenure_unit || !emi_start_date) {
+    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+  // emi_amount is only required up-front for standard loans; flexi loans
+  // derive it from the interest rate instead.
+  if (loanType === 'standard' && !body.emi_amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
   const principalNum = Number(principal);
-  const emiNum = Number(emi_amount);
   const tenureNum = Number(tenure_value);
 
-  if (principalNum <= 0 || emiNum <= 0 || tenureNum <= 0) {
+  if (principalNum <= 0 || tenureNum <= 0) {
     return NextResponse.json({ error: 'Amounts and tenure must be positive' }, { status: 400 });
   }
 
@@ -98,13 +84,57 @@ export async function POST(req: NextRequest) {
   const totalMonths =
     (tenure_unit as LoanTenureUnit) === 'years' ? tenureNum * 12 : tenureNum;
 
-  const interestRate = calcInterestRate(principalNum, emiNum, totalMonths);
+  let emiNum: number;
+  let interestRate: number;
+  let interestOnlyValue = 0;
+  let interestOnlyUnit: LoanTenureUnit = 'years';
+  let interestOnlyMonths = 0;
+  let interestOnlyPayment = 0;
+
+  if (loanType === 'flexi') {
+    const rateNum = Number(body.interest_rate);
+    if (!rateNum || rateNum <= 0) {
+      return NextResponse.json(
+        { error: 'Interest rate must be positive for a flexi loan' },
+        { status: 400 }
+      );
+    }
+    if (!['months', 'years'].includes(body.interest_only_unit)) {
+      return NextResponse.json({ error: 'Invalid interest-only unit' }, { status: 400 });
+    }
+    interestOnlyUnit = body.interest_only_unit as LoanTenureUnit;
+    interestOnlyValue = Number(body.interest_only_value);
+    if (!(interestOnlyValue >= 0)) {
+      return NextResponse.json({ error: 'Interest-only period must be zero or positive' }, { status: 400 });
+    }
+    interestOnlyMonths =
+      interestOnlyUnit === 'years' ? Math.round(interestOnlyValue * 12) : Math.round(interestOnlyValue);
+
+    if (interestOnlyMonths >= totalMonths) {
+      return NextResponse.json(
+        { error: 'Interest-only period must be shorter than the total tenure' },
+        { status: 400 }
+      );
+    }
+
+    const amortizingMonths = totalMonths - interestOnlyMonths;
+    interestRate = rateNum;
+    emiNum = calcEmiFromRate(principalNum, rateNum, amortizingMonths);
+    interestOnlyPayment = calcInterestOnlyPayment(principalNum, rateNum);
+  } else {
+    emiNum = Number(body.emi_amount);
+    if (emiNum <= 0) {
+      return NextResponse.json({ error: 'Amounts and tenure must be positive' }, { status: 400 });
+    }
+    interestRate = calcInterestRate(principalNum, emiNum, totalMonths);
+  }
 
   const { data: loan, error } = await supabaseAdmin
     .from('loans')
     .insert({
       user_id: userId,
       name: name.trim(),
+      loan_type: loanType,
       principal: Math.round(principalNum * 100) / 100,
       emi_amount: Math.round(emiNum * 100) / 100,
       tenure_value: tenureNum,
@@ -112,6 +142,10 @@ export async function POST(req: NextRequest) {
       emi_start_date,
       total_months: totalMonths,
       interest_rate: interestRate,
+      interest_only_value: interestOnlyValue,
+      interest_only_unit: interestOnlyUnit,
+      interest_only_months: interestOnlyMonths,
+      interest_only_payment: interestOnlyPayment,
     })
     .select('*')
     .single();
