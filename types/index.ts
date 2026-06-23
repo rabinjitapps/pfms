@@ -222,9 +222,11 @@ export interface Loan {
   interest_rate: number;  // annual %, auto-calculated from EMI formula
   created_at: string;
   updated_at: string;
+  payments?: LoanPayment[]; // manually-marked-paid months, attached by GET /api/loans
 }
 
 export interface LoanPayment {
+  loan_id?: string;
   month: string;   // YYYY-MM
   paid_at: string; // ISO timestamp
 }
