@@ -105,6 +105,30 @@
   color: var(--brick);
 }
 
+/* ── next month note ── */
+.nextMonthNote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 28px;
+  margin: -10px 0 24px;
+  font-family: var(--font-mono);
+}
+
+.nextMonthLabel {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.nextMonthAmount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brass);
+}
+
 /* ── toolbar ── */
 .toolbar {
   display: flex;
