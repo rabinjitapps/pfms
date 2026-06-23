@@ -41,10 +41,10 @@ function buildLoanSummary(loan: Loan): LoanSummary {
   const total_amount_pending = pending_count * loan.emi_amount;
   const percent_complete = Math.round((paid_count / loan.total_months) * 100);
 
-  // Debt-free = start date + total_months
+  // Debt-free = month of the final EMI (start date + total_months - 1)
   const debtFreeDate = new Date(
     startDate.getFullYear(),
-    startDate.getMonth() + loan.total_months,
+    startDate.getMonth() + loan.total_months - 1,
     1
   );
 
