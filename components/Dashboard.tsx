@@ -288,12 +288,12 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                     </p>
                     {age && (
                       <p className={styles.holdingMetaSecondary}>
-                        Held {age.label} <span className={styles.holdingDate}>({age.days} days)</span>
+                        <b>Held {age.label} <span className={styles.holdingDate}>({age.days} days)</b></span>
                       </p>
                     )}
                     {h.redeemedAmount > 0 && (
                       <p className={styles.holdingMetaSecondary}>
-                        Redeemed ₹{formatINR(h.redeemedAmount)}
+                        <b>Redeemed ₹{formatINR(h.redeemedAmount)}</b>
                       </p>
                     )}
                   </div>
