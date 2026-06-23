@@ -96,7 +96,26 @@ function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
     return s + (nextDue ? nextDue.emi_amount : 0);
   }, 0);
   const totalOutstanding = summaries.reduce((s, ls) => s + ls.total_amount_pending, 0);
-  return { loans: summaries, total_monthly_emi: totalMonthlyEmi, total_outstanding: totalOutstanding };
+
+  // "Next month's EMI" looks one calendar month ahead of today — i.e. the
+  // EMI that will be due in the month *after* the current one — summed
+  // across every loan that still has a scheduled (unpaid) entry that month.
+  const today = new Date();
+  const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const nextMonthStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
+  const nextMonthLabel = nextMonthDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  const nextMonthEmi = summaries.reduce((s, ls) => {
+    const entry = ls.emi_schedule.find((m) => m.month === nextMonthStr && !m.is_paid);
+    return s + (entry ? entry.emi_amount : 0);
+  }, 0);
+
+  return {
+    loans: summaries,
+    total_monthly_emi: totalMonthlyEmi,
+    total_outstanding: totalOutstanding,
+    next_month_emi: nextMonthEmi,
+    next_month_label: nextMonthLabel,
+  };
 }
 
 function fmt(n: number): string {
@@ -493,25 +512,33 @@ export default function LoanTracker({ displayName }: Props) {
 
           {/* Portfolio summary */}
           {loans.length > 0 && (
-            <div className={styles.summaryCard}>
-              <div className={styles.summaryHeading}>Portfolio Overview</div>
-              <div className={styles.summaryRow}>
-                <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Total Monthly EMI</span>
-                  <span className={styles.summaryBig}>{fmtCurrency(portfolio.total_monthly_emi)}</span>
-                </div>
-                <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Total Outstanding</span>
-                  <span className={`${styles.summaryBig} ${styles.summaryNeg}`}>
-                    {fmtCurrency(portfolio.total_outstanding)}
-                  </span>
-                </div>
-                <div className={styles.summaryItem}>
-                  <span className={styles.summaryLabel}>Active Loans</span>
-                  <span className={styles.summaryBig}>{loans.length}</span>
+            <>
+              <div className={styles.summaryCard}>
+                <div className={styles.summaryHeading}>Portfolio Overview</div>
+                <div className={styles.summaryRow}>
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Total Monthly EMI</span>
+                    <span className={styles.summaryBig}>{fmtCurrency(portfolio.total_monthly_emi)}</span>
+                  </div>
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Total Outstanding</span>
+                    <span className={`${styles.summaryBig} ${styles.summaryNeg}`}>
+                      {fmtCurrency(portfolio.total_outstanding)}
+                    </span>
+                  </div>
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Active Loans</span>
+                    <span className={styles.summaryBig}>{loans.length}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+              {portfolio.next_month_emi > 0 && (
+                <div className={styles.nextMonthNote}>
+                  <span className={styles.nextMonthLabel}>{portfolio.next_month_label} EMI</span>
+                  <span className={styles.nextMonthAmount}>{fmtCurrency(portfolio.next_month_emi)}</span>
+                </div>
+              )}
+            </>
           )}
 
           {/* Add button */}
