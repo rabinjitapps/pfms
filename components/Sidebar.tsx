@@ -6,7 +6,7 @@ import { signOut } from 'next-auth/react';
 import styles from './Sidebar.module.css';
 
 interface Props {
-  active: 'funds' | 'stocks' | 'expenses' | 'analysis';
+  active: 'overview' | 'funds' | 'stocks' | 'expenses' | 'analysis';
   displayName: string;
 }
 
@@ -44,6 +44,20 @@ export default function Sidebar({ active, displayName }: Props) {
         </div>
 
         <nav className={styles.nav} aria-label="Sections">
+          <Link
+            href="/dashboard"
+            className={active === 'overview' ? styles.navLinkActive : styles.navLink}
+            aria-current={active === 'overview' ? 'page' : undefined}
+            onClick={() => setOpen(false)}
+          >
+            <svg className={styles.navIcon} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <rect x="3" y="3" width="6.5" height="6.5" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+              <rect x="10.5" y="3" width="6.5" height="6.5" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+              <rect x="3" y="10.5" width="6.5" height="6.5" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+              <rect x="10.5" y="10.5" width="6.5" height="6.5" rx="1.2" stroke="currentColor" strokeWidth="1.6" />
+            </svg>
+            Dashboard
+          </Link>
           <Link
             href="/"
             className={active === 'funds' ? styles.navLinkActive : styles.navLink}

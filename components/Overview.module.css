@@ -1,0 +1,379 @@
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.loadingText {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 14px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+/* ----------------------------------------------------------------
+   In-page header
+   ---------------------------------------------------------------- */
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 32px 24px 0;
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+  white-space: nowrap;
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.main {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 20px 24px 80px;
+}
+
+.errorBanner {
+  background: var(--brick-soft);
+  color: var(--brick);
+  padding: 12px 16px;
+  border-radius: 3px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* ----------------------------------------------------------------
+   Net worth card
+   ---------------------------------------------------------------- */
+.netWorthCard {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 24px 26px;
+  margin-bottom: 24px;
+}
+
+.netWorthLabel {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.netWorthValue {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 12px;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.netWorthBreakdown {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.gainPositive {
+  color: var(--ledger-green);
+  font-weight: 600;
+}
+
+.gainNegative {
+  color: var(--brick);
+  font-weight: 600;
+}
+
+/* ----------------------------------------------------------------
+   Per-tracker summary cards
+   ---------------------------------------------------------------- */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.summaryCard {
+  display: block;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 18px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.summaryCard:hover {
+  border-color: var(--ledger-green);
+  transform: translateY(-1px);
+}
+
+.cardLabel {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.cardValue {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardValueNegative {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--brick);
+  margin: 0 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardSubPositive {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ledger-green);
+  margin: 0 0 8px;
+}
+
+.cardSubNegative {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brick);
+  margin: 0 0 8px;
+}
+
+.cardSubNeutral {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+}
+
+.cardMeta {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------
+   Top movers
+   ---------------------------------------------------------------- */
+.moversSection {
+  margin-bottom: 28px;
+}
+
+.sectionHeading {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin: 0 0 12px;
+}
+
+.moversGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.moverCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 16px 18px;
+  transition: border-color 0.15s ease;
+}
+
+.moverCard:hover {
+  border-color: var(--ledger-green);
+}
+
+.moverTag {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.moverName {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.moverPctPositive {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ledger-green);
+}
+
+.moverPctNegative {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--brick);
+}
+
+/* ----------------------------------------------------------------
+   Cash flow
+   ---------------------------------------------------------------- */
+.cashFlowSection {
+  margin-bottom: 28px;
+}
+
+.cashFlowGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 18px;
+}
+
+.cashFlowGrid > div + div {
+  border-left: 1px solid var(--hairline);
+  padding-left: 14px;
+}
+
+.cashFlowLabel {
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.cashFlowValuePositive {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ledger-green);
+  margin: 0;
+}
+
+.cashFlowValueNegative {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brick);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------
+   Quick links
+   ---------------------------------------------------------------- */
+.quickLinks {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.quickLinkBtn {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ledger-green);
+}
+
+.quickLinkBtn:hover {
+  text-decoration: underline;
+}
+
+/* ----------------------------------------------------------------
+   Mobile breakpoint — phones and small tablets (<= 640px)
+   ---------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .pageHeader {
+    padding: 20px 14px 0;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+  }
+
+  .main {
+    padding: 20px 14px 60px;
+  }
+
+  .netWorthCard {
+    padding: 18px 16px;
+  }
+
+  .netWorthValue {
+    font-size: 26px;
+  }
+
+  .netWorthBreakdown {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .cardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .moversGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cashFlowGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .cashFlowGrid > div:nth-child(odd) {
+    border-left: none;
+    padding-left: 0;
+  }
+
+  .cashFlowGrid > div:nth-child(3),
+  .cashFlowGrid > div:nth-child(4) {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--hairline);
+    padding-top: 12px;
+  }
+}
