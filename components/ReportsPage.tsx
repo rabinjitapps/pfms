@@ -31,6 +31,12 @@ function todayYear(): string {
   return String(new Date().getFullYear());
 }
 
+function formatMonthLabel(ym: string): string {
+  const d = new Date(ym + '-01T00:00:00');
+  if (Number.isNaN(d.getTime())) return ym;
+  return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
 // ----------------------------------------------------------------------
 // Row shapes for each report
 // ----------------------------------------------------------------------
@@ -206,6 +212,12 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
     const years = new Set(expenseEntries.map((e) => e.date.slice(0, 4)));
     years.add(todayYear());
     return Array.from(years).sort();
+  }, [expenseEntries]);
+
+  const availableMonths = useMemo(() => {
+    const months = new Set(expenseEntries.map((e) => e.date.slice(0, 7)));
+    months.add(todayMonth());
+    return Array.from(months).sort().reverse();
   }, [expenseEntries]);
 
   const periodFilteredEntries = useMemo(() => {
@@ -431,7 +443,9 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
               {periodMode === 'monthly' && (
                 <label className={styles.filterField}>
                   <span>Month</span>
-                  <input type="month" value={expMonth} onChange={(e) => setExpMonth(e.target.value)} />
+                  <select value={expMonth} onChange={(e) => setExpMonth(e.target.value)}>
+                    {availableMonths.map((m) => <option key={m} value={m}>{formatMonthLabel(m)}</option>)}
+                  </select>
                 </label>
               )}
               <label className={styles.filterField}>
