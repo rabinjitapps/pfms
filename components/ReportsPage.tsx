@@ -31,11 +31,20 @@ function todayYear(): string {
   return String(new Date().getFullYear());
 }
 
-function formatMonthLabel(ym: string): string {
-  const d = new Date(ym + '-01T00:00:00');
-  if (Number.isNaN(d.getTime())) return ym;
-  return d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-}
+const MONTH_NAMES = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
 
 // ----------------------------------------------------------------------
 // Row shapes for each report
@@ -203,21 +212,18 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
   // ── Expenses tab state ───────────────────────────────────────────────
   const [periodMode, setPeriodMode] = useState<'consolidated' | 'yearly' | 'monthly'>('consolidated');
   const [expYear, setExpYear] = useState(todayYear());
-  const [expMonth, setExpMonth] = useState(todayMonth());
+  const [monthSelYear, setMonthSelYear] = useState(todayYear());
+  const [monthSelMonth, setMonthSelMonth] = useState(todayMonth().slice(5, 7));
   const [groupBy, setGroupBy] = useState<'transactions' | 'headwise'>('transactions');
   const [direction, setDirection] = useState<'all' | 'INFLOW' | 'OUTFLOW'>('all');
   const [headFilter, setHeadFilter] = useState('all');
+
+  const expMonth = `${monthSelYear}-${monthSelMonth}`;
 
   const availableYears = useMemo(() => {
     const years = new Set(expenseEntries.map((e) => e.date.slice(0, 4)));
     years.add(todayYear());
     return Array.from(years).sort();
-  }, [expenseEntries]);
-
-  const availableMonths = useMemo(() => {
-    const months = new Set(expenseEntries.map((e) => e.date.slice(0, 7)));
-    months.add(todayMonth());
-    return Array.from(months).sort().reverse();
   }, [expenseEntries]);
 
   const periodFilteredEntries = useMemo(() => {
@@ -441,12 +447,20 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
                 </label>
               )}
               {periodMode === 'monthly' && (
-                <label className={styles.filterField}>
-                  <span>Month</span>
-                  <select value={expMonth} onChange={(e) => setExpMonth(e.target.value)}>
-                    {availableMonths.map((m) => <option key={m} value={m}>{formatMonthLabel(m)}</option>)}
-                  </select>
-                </label>
+                <>
+                  <label className={styles.filterField}>
+                    <span>Year</span>
+                    <select value={monthSelYear} onChange={(e) => setMonthSelYear(e.target.value)}>
+                      {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </label>
+                  <label className={styles.filterField}>
+                    <span>Month</span>
+                    <select value={monthSelMonth} onChange={(e) => setMonthSelMonth(e.target.value)}>
+                      {MONTH_NAMES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
+                  </label>
+                </>
               )}
               <label className={styles.filterField}>
                 <span>Group by</span>
