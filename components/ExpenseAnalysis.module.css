@@ -181,14 +181,14 @@
 }
 
 .totalValueIn {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 600;
   color: var(--ledger-green);
 }
 
 .totalValueOut {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 600;
   color: var(--brick);

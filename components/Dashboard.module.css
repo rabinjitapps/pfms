@@ -114,7 +114,7 @@
 }
 
 .summaryValue {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 30px;
   font-weight: 600;
   color: var(--ink);
@@ -140,7 +140,7 @@
 }
 
 .summaryValueSecondary {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 30px;
   font-weight: 600;
   color: var(--ink-soft);
@@ -150,7 +150,7 @@
 }
 
 .summaryValueSmall {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 21px;
   font-weight: 600;
   color: var(--ink);
@@ -158,7 +158,7 @@
 }
 
 .gainPositive {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 30px;
   font-weight: 600;
   color: var(--ledger-green);
@@ -168,7 +168,7 @@
 }
 
 .gainNegative {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 30px;
   font-weight: 600;
   color: var(--brick);
@@ -186,7 +186,7 @@
 }
 
 .xirrPositive {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 21px;
   font-weight: 600;
   color: var(--ledger-green);
@@ -194,7 +194,7 @@
 }
 
 .xirrNegative {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 21px;
   font-weight: 600;
   color: var(--brick);
