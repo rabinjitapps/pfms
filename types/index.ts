@@ -57,6 +57,27 @@ export interface PortfolioSummary {
 }
 
 // ----------------------------------------------------------------------
+// Fund growth (invested vs current value over time, for the analysis chart)
+// ----------------------------------------------------------------------
+
+export type FundGrowthPeriodType = 'month' | 'year';
+
+export interface FundGrowthPoint {
+  period: string;    // 'YYYY-MM' for month granularity, 'YYYY' for year granularity
+  invested: number;  // cost basis of units held as of this period's end
+  current: number;   // units held as of period end, valued at the NAV on/before period end
+}
+
+export interface FundGrowthData {
+  holdingId: string;
+  fundName: string;
+  periodType: FundGrowthPeriodType;
+  points: FundGrowthPoint[];
+  availableYears: number[]; // years with at least one transaction, ascending, through the current year
+  navEstimated: boolean;    // true if historical NAVs could not be fetched and current value is approximated
+}
+
+// ----------------------------------------------------------------------
 // Stock tracker
 // ----------------------------------------------------------------------
 
