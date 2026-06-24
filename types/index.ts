@@ -269,11 +269,13 @@ export interface LoanSummary {
   emi_schedule: LoanEmiMonth[];
   in_interest_only_phase: boolean; // true if the current/next-due month is still interest-only
   interest_only_months_remaining: number;
+  total_interest: number; // total interest over the full loan tenure (running + completed)
 }
 
 export interface LoanPortfolioSummary {
   loans: LoanSummary[];
   total_monthly_emi: number;
   total_outstanding: number;
+  total_interest: number; // sum of total_interest across all loans (running + completed)
   upcoming_months: { month: string; label: string; amount: number }[]; // chronological, strictly after the current month
 }
