@@ -61,3 +61,48 @@ export async function fetchNavOnDate(
 
   return { nav, date: toIsoDate(best.date) };
 }
+
+export interface NavHistoryPoint {
+  date: string; // ISO yyyy-mm-dd
+  nav: number;
+}
+
+/**
+ * Returns the full NAV history for a scheme code, sorted ascending by date
+ * (ISO). Used for charting (e.g. fund growth over time), where we need many
+ * lookups against one fund's series rather than a single point-in-time NAV —
+ * fetch once, then look up locally instead of re-hitting mfapi.in per date.
+ */
+export async function fetchNavHistory(schemeCode: string): Promise<NavHistoryPoint[]> {
+  const res = await fetch(`https://api.mfapi.in/mf/${schemeCode}`, { cache: 'no-store' });
+  if (!res.ok) {
+    throw new Error(`mfapi.in fetch failed: ${res.status}`);
+  }
+  const json = (await res.json()) as MfapiSchemeResponse;
+  if (json.status !== 'SUCCESS' || !Array.isArray(json.data)) {
+    return [];
+  }
+
+  const points: NavHistoryPoint[] = [];
+  for (const point of json.data) {
+    const nav = parseFloat(point.nav);
+    if (isNaN(nav)) continue;
+    points.push({ date: toIsoDate(point.date), nav });
+  }
+
+  return points.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
+/**
+ * Finds the NAV on or before `targetDate` from an ascending-sorted history
+ * series (as returned by fetchNavHistory). Returns null if every point in
+ * the series is after targetDate (fund didn't exist yet).
+ */
+export function navOnOrBefore(history: NavHistoryPoint[], targetDate: string): number | null {
+  let result: number | null = null;
+  for (const point of history) {
+    if (point.date > targetDate) break;
+    result = point.nav;
+  }
+  return result;
+}
