@@ -136,7 +136,7 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
         });
       }
     }
-    rows.sort((a, b) => a.date.localeCompare(b.date));
+    rows.sort((a, b) => b.date.localeCompare(a.date));
     return rows;
   }, [funds, fundId, fundFrom, fundTo]);
 
@@ -177,7 +177,7 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
         });
       }
     }
-    rows.sort((a, b) => a.date.localeCompare(b.date));
+    rows.sort((a, b) => b.date.localeCompare(a.date));
     return rows;
   }, [stocks, stockId, stockFrom, stockTo]);
 
@@ -226,7 +226,7 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
 
   const expenseTxRows = useMemo<ExpenseTxRow[]>(() => {
     return [...periodFilteredEntries]
-      .sort((a, b) => a.date.localeCompare(b.date))
+      .sort((a, b) => b.date.localeCompare(a.date))
       .map((e) => ({
         date: e.date,
         head: e.category?.name ?? '—',
