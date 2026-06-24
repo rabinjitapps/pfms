@@ -1,0 +1,352 @@
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.loadingText {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 14px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+/* ----------------------------------------------------------------
+   In-page header
+   ---------------------------------------------------------------- */
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 32px 24px 0;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+  white-space: nowrap;
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 24px 80px;
+}
+
+.errorBanner {
+  background: var(--brick-soft);
+  color: var(--brick);
+  padding: 12px 16px;
+  border-radius: 3px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* ----------------------------------------------------------------
+   Tabs
+   ---------------------------------------------------------------- */
+.tabRow {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 20px;
+}
+
+.tabBtn,
+.tabBtnActive {
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.tabBtn {
+  color: var(--ink-faint);
+}
+
+.tabBtn:hover {
+  color: var(--ink);
+}
+
+.tabBtnActive {
+  color: var(--ledger-green);
+  border-bottom-color: var(--ledger-green);
+  font-weight: 600;
+}
+
+/* ----------------------------------------------------------------
+   Filter bar
+   ---------------------------------------------------------------- */
+.filterBar {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.filterField span {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.filterField select,
+.filterField input {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  padding: 6px 8px;
+  min-width: 140px;
+}
+
+.filterField select:focus,
+.filterField input:focus {
+  outline: none;
+  border-color: var(--ledger-green);
+}
+
+.clearBtn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--brick);
+  background: none;
+  border: none;
+  padding: 6px 0;
+  white-space: nowrap;
+}
+
+.clearBtn:hover {
+  text-decoration: underline;
+}
+
+/* ----------------------------------------------------------------
+   Summary strip + export buttons
+   ---------------------------------------------------------------- */
+.summaryStrip {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.rowCount {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.totalPositive {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ledger-green);
+}
+
+.totalNegative {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brick);
+}
+
+.exportBtns {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.exportBtn {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  padding: 7px 14px;
+  white-space: nowrap;
+}
+
+.exportBtn:hover:not(:disabled) {
+  border-color: var(--ledger-green);
+  color: var(--ledger-green);
+}
+
+.exportBtn:disabled {
+  opacity: 0.4;
+}
+
+/* ----------------------------------------------------------------
+   Table
+   ---------------------------------------------------------------- */
+.tableWrap {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--paper);
+}
+
+.rightCol {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.notesCol {
+  white-space: normal;
+  color: var(--ink-faint);
+  max-width: 220px;
+}
+
+.tagBuy {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ledger-green);
+  background: var(--ledger-green-soft);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+
+.tagSell {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--brick);
+  background: var(--brick-soft);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+
+.emptyText {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 14px;
+}
+
+/* ----------------------------------------------------------------
+   Mobile breakpoint — phones and small tablets (<= 640px)
+   ---------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .pageHeader {
+    padding: 20px 14px 0;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+  }
+
+  .main {
+    padding: 20px 14px 60px;
+  }
+
+  .tabRow {
+    overflow-x: auto;
+  }
+
+  .filterBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterField select,
+  .filterField input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .summaryStrip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .exportBtns {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .exportBtn {
+    flex: 1;
+  }
+}
