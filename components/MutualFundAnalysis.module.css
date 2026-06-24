@@ -1,0 +1,306 @@
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.loadingText {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 14px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+/* ----------------------------------------------------------------
+   In-page header
+   ---------------------------------------------------------------- */
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 32px 24px 0;
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+  white-space: nowrap;
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.main {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 20px 24px 80px;
+}
+
+.errorBanner {
+  background: var(--brick-soft);
+  color: var(--brick);
+  padding: 12px 16px;
+  border-radius: 3px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* ----------------------------------------------------------------
+   Controls
+   ---------------------------------------------------------------- */
+.controlsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.fundSelect {
+  flex: 1 1 240px;
+  min-width: 200px;
+  padding: 8px 12px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.fundSelect:hover {
+  border-color: var(--ledger-green);
+}
+
+.periodTypeToggle {
+  display: flex;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.toggleBtn,
+.toggleBtnActive {
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  background: var(--paper-raised);
+  border: none;
+  white-space: nowrap;
+}
+
+.toggleBtn {
+  color: var(--ink-faint);
+}
+
+.toggleBtn:hover {
+  color: var(--ink);
+  background: var(--brass-soft);
+}
+
+.toggleBtnActive {
+  color: var(--ledger-green);
+  background: var(--ledger-green-soft);
+  font-weight: 600;
+}
+
+/* ----------------------------------------------------------------
+   Summary card
+   ---------------------------------------------------------------- */
+.summaryCard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+}
+
+.summaryLabel {
+  font-size: 12px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.summaryValue {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--ledger-green);
+  margin: 0;
+}
+
+.summaryValueSecondary {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.gainPositive {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--ledger-green);
+  margin: 0;
+}
+
+.gainNegative {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--brick);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------
+   Chart
+   ---------------------------------------------------------------- */
+.chartCard {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 22px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.legendDotInvested,
+.legendDotCurrent {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legendDotInvested {
+  background: var(--brass);
+}
+
+.legendDotCurrent {
+  background: var(--ledger-green);
+}
+
+.navNote {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+/* ----------------------------------------------------------------
+   Empty state
+   ---------------------------------------------------------------- */
+.emptyState {
+  border: 1px dashed var(--hairline);
+  border-radius: 4px;
+  padding: 52px 24px;
+  text-align: center;
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--ink);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.emptyBody {
+  font-size: 14px;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------
+   Mobile breakpoint — phones and small tablets (<= 640px)
+   ---------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .pageHeader {
+    padding: 20px 14px 0;
+  }
+
+  .pageTitle {
+    font-size: 20px;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+  }
+
+  .main {
+    padding: 20px 14px 60px;
+  }
+
+  .controlsRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fundSelect {
+    min-width: 0;
+  }
+
+  .periodTypeToggle {
+    width: 100%;
+  }
+
+  .toggleBtn,
+  .toggleBtnActive {
+    flex: 1;
+    text-align: center;
+  }
+
+  .summaryCard {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px 18px;
+  }
+
+  .summaryValue,
+  .summaryValueSecondary,
+  .gainPositive,
+  .gainNegative {
+    font-size: 19px;
+  }
+
+  .chartCard {
+    padding: 16px 12px;
+  }
+}
