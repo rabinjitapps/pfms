@@ -214,6 +214,9 @@ export default function Overview({ displayName }: { displayName: string }) {
                 <p className={styles.cardMeta}>
                   Monthly EMI: ₹{formatINR(loanPortfolio.total_monthly_emi)}
                 </p>
+                <p className={styles.cardMeta}>
+                  Total interest: ₹{formatINR(loanPortfolio.total_interest)}
+                </p>
               </Link>
             )}
           </div>

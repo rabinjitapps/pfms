@@ -236,6 +236,12 @@ function LoanCard({
             })}
           </span>
         </div>
+        <div className={styles.metric}>
+          <span className={styles.metricLabel}>Total Interest</span>
+          <span className={`${styles.metricValue} ${styles.metricValueInterest}`}>
+            {fmtCurrency(summary.total_interest)}
+          </span>
+        </div>
       </div>
 
       {summary.in_interest_only_phase && (
@@ -422,6 +428,12 @@ export default function LoanTracker({ displayName }: Props) {
                     <span className={styles.summaryLabel}>Total Outstanding</span>
                     <span className={`${styles.summaryBig} ${styles.summaryNeg}`}>
                       {fmtCurrency(portfolio.total_outstanding)}
+                    </span>
+                  </div>
+                  <div className={styles.summaryItem}>
+                    <span className={styles.summaryLabel}>Total Interest</span>
+                    <span className={`${styles.summaryBig} ${styles.summaryNeg}`}>
+                      {fmtCurrency(portfolio.total_interest)}
                     </span>
                   </div>
                   <div className={styles.summaryItem}>
