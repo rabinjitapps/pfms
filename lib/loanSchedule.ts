@@ -61,6 +61,13 @@ export function buildLoanSummary(loan: Loan): LoanSummary {
     (s) => !s.is_paid && s.phase === 'interest_only'
   ).length;
 
+  // Total interest over the full life of the loan (running + completed
+  // installments combined) — the sum of every scheduled payment (interest-only
+  // + EMI) minus the principal actually borrowed. This is fixed by the loan's
+  // terms and doesn't change as installments get paid off.
+  const total_payable = schedule.reduce((sum, s) => sum + s.emi_amount, 0);
+  const total_interest = Math.max(0, total_payable - loan.principal);
+
   return {
     loan,
     paid_count,
@@ -75,6 +82,7 @@ export function buildLoanSummary(loan: Loan): LoanSummary {
     emi_schedule: schedule,
     in_interest_only_phase,
     interest_only_months_remaining,
+    total_interest,
   };
 }
 
@@ -89,6 +97,7 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
     return s + (nextDue ? nextDue.emi_amount : 0);
   }, 0);
   const totalOutstanding = summaries.reduce((s, ls) => s + ls.total_amount_pending, 0);
+  const totalInterest = summaries.reduce((s, ls) => s + ls.total_interest, 0);
 
   const today = new Date();
   const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -112,6 +121,7 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
     loans: summaries,
     total_monthly_emi: totalMonthlyEmi,
     total_outstanding: totalOutstanding,
+    total_interest: totalInterest,
     upcoming_months: upcomingMonths,
   };
 }
