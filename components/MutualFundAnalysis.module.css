@@ -224,6 +224,133 @@
   font-style: italic;
 }
 
+.hoverHint {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.benchmarkSelect {
+  flex: 1 1 240px;
+  min-width: 200px;
+  padding: 8px 12px;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.benchmarkSelect:hover {
+  border-color: var(--ledger-green);
+}
+
+.legendDotBenchmark {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--ink-faint);
+}
+
+.benchmarkSummary {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* ----------------------------------------------------------------
+   Long term / short term split
+   ---------------------------------------------------------------- */
+.termCard {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+}
+
+.termCardTitle {
+  font-size: 12px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.termBar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--hairline);
+  margin-bottom: 16px;
+}
+
+.termBarLong {
+  background: var(--ledger-green);
+  height: 100%;
+}
+
+.termBarShort {
+  background: var(--brass);
+  height: 100%;
+}
+
+.termGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.termLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin: 0 0 4px;
+}
+
+.termValue {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 2px;
+}
+
+.termSub {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+.legendDotLong,
+.legendDotShort {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legendDotLong {
+  background: var(--ledger-green);
+}
+
+.legendDotShort {
+  background: var(--brass);
+}
+
 /* ----------------------------------------------------------------
    Empty state
    ---------------------------------------------------------------- */
@@ -302,5 +429,18 @@
 
   .chartCard {
     padding: 16px 12px;
+  }
+
+  .termCard {
+    padding: 16px 18px;
+  }
+
+  .termGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .benchmarkSelect {
+    min-width: 0;
   }
 }
