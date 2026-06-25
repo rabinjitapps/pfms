@@ -168,13 +168,24 @@ export async function GET(req: NextRequest) {
           );
           const totalInvested = points.length > 0 ? points[points.length - 1].invested : 0;
           const latestValue = values.length > 0 ? values[values.length - 1] : 0;
-          result.benchmark = {
-            benchmarkId: chosen.id,
-            label: chosen.label,
-            isCategoryDefault: false,
-            values,
-            returnPct: totalInvested > 0 ? ((latestValue - totalInvested) / totalInvested) * 100 : 0,
-          };
+          // See app/api/holdings/[id]/growth/route.ts for why this guard
+          // exists: totalInvested > 0 with latestValue <= 0 means the
+          // benchmark data didn't actually cover the transaction dates,
+          // not that the index lost 100%.
+          const isUsable = !(totalInvested > 0 && latestValue <= 0);
+          if (isUsable) {
+            result.benchmark = {
+              benchmarkId: chosen.id,
+              label: chosen.label,
+              isCategoryDefault: false,
+              values,
+              returnPct: totalInvested > 0 ? ((latestValue - totalInvested) / totalInvested) * 100 : 0,
+            };
+          } else {
+            console.warn(
+              `Benchmark comparison for ${chosen.label} produced an unusable result (totalInvested=${totalInvested}, latestValue=${latestValue}); omitting.`
+            );
+          }
         }
       } catch (err) {
         console.error('Failed to fetch benchmark history for portfolio growth chart:', err);
