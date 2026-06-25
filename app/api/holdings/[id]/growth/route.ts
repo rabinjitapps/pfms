@@ -2,52 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getCurrentUserId } from '@/lib/session';
 import { fetchNavHistory, navOnOrBefore, NavHistoryPoint } from '@/lib/mfapi';
+import {
+  BENCHMARKS,
+  categoryBenchmark,
+  fetchBenchmarkHistory,
+  findBenchmark,
+  replicateCashflowSeries,
+} from '@/lib/benchmarks';
+import { lastDayOfMonth, unitsAndInvestedAsOf, splitByHoldingPeriod } from '@/lib/fundGrowth';
 import { Holding, Transaction, FundGrowthData, FundGrowthPeriodType, FundGrowthPoint } from '@/types';
-
-function lastDayOfMonth(year: number, month1to12: number): string {
-  // Day 0 of next month rolls back to the last day of `month1to12`.
-  const d = new Date(year, month1to12, 0);
-  return `${year}-${String(month1to12).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// FIFO cost-basis + units held, restricted to transactions on/before `asOf`.
-// Mirrors the lot-walking logic in GET /api/holdings, kept independent here
-// since every point on the chart needs the state as of a different cutoff.
-function unitsAndInvestedAsOf(transactions: Transaction[], asOf: string) {
-  const relevant = transactions.filter((t) => t.date <= asOf);
-  const chronological = [...relevant].sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-    return a.created_at < b.created_at ? -1 : 1;
-  });
-
-  type Lot = { remainingUnits: number; costPerUnit: number };
-  const lots: Lot[] = [];
-  let buyUnits = 0;
-  let sellUnits = 0;
-
-  for (const t of chronological) {
-    const units = Number(t.units);
-    if (t.type === 'BUY') {
-      buyUnits += units;
-      const costPerUnit = units > 0 ? Number(t.amount) / units : 0;
-      lots.push({ remainingUnits: units, costPerUnit });
-    } else {
-      sellUnits += units;
-      let toSell = units;
-      for (const lot of lots) {
-        if (toSell <= 0) break;
-        if (lot.remainingUnits <= 0) continue;
-        const consumed = Math.min(lot.remainingUnits, toSell);
-        lot.remainingUnits -= consumed;
-        toSell -= consumed;
-      }
-    }
-  }
-
-  const totalUnits = buyUnits - sellUnits;
-  const investedAmount = lots.reduce((sum, l) => sum + l.remainingUnits * l.costPerUnit, 0);
-  return { totalUnits, investedAmount };
-}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getCurrentUserId();
@@ -84,6 +47,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       points: [],
       availableYears: [todayYear],
       navEstimated: false,
+      currentUnits: 0,
+      availableBenchmarks: BENCHMARKS.map((b) => ({ id: b.id, label: b.label })),
     };
     return NextResponse.json(empty);
   }
@@ -148,7 +113,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return Number(fund.latest_nav ?? 0);
   }
 
-  const transactions = holding.transactions;
+  const transactions: Transaction[] = holding.transactions;
 
   function buildPoint(period: string, periodEnd: string): FundGrowthPoint {
     const cutoff = periodEnd > todayIso ? todayIso : periodEnd;
@@ -158,10 +123,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const points: FundGrowthPoint[] = [];
+  const periodEnds: string[] = [];
 
   if (periodType === 'year') {
     for (let y = firstYear; y <= todayYear; y++) {
       const periodEnd = y === todayYear ? todayIso : `${y}-12-31`;
+      periodEnds.push(periodEnd);
       points.push(buildPoint(String(y), periodEnd));
     }
   } else {
@@ -170,9 +137,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     for (let m = startMonth; m <= endMonth; m++) {
       const period = `${selectedYear}-${String(m).padStart(2, '0')}`;
       const periodEnd = lastDayOfMonth(selectedYear, m);
+      periodEnds.push(periodEnd);
       points.push(buildPoint(period, periodEnd));
     }
   }
+
+  const currentUnits = unitsAndInvestedAsOf(transactions, todayIso).totalUnits;
+  const currentNav = Number(fund.latest_nav ?? 0);
+  const termSplit = splitByHoldingPeriod(transactions, todayIso, currentNav);
 
   const result: FundGrowthData = {
     holdingId: holding.id,
@@ -181,7 +153,47 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     points,
     availableYears,
     navEstimated,
+    currentUnits,
+    termSplit,
+    availableBenchmarks: BENCHMARKS.map((b) => ({ id: b.id, label: b.label })),
   };
+
+  // Optional benchmark comparison: replays this fund's actual buy/sell
+  // amounts as if they'd gone into the chosen index instead, on the same
+  // dates, then values that virtual position at each chart point.
+  const benchmarkParam = searchParams.get('benchmark');
+  if (benchmarkParam) {
+    const isAuto = benchmarkParam === 'category';
+    const autoChoice = categoryBenchmark(fund.category);
+    const chosen = isAuto ? autoChoice : findBenchmark(benchmarkParam);
+    if (chosen) {
+      try {
+        const benchmarkHistory = await fetchBenchmarkHistory(chosen.yahooSymbol, firstTxnDate);
+        if (benchmarkHistory.length > 0) {
+          const latestPrice = benchmarkHistory[benchmarkHistory.length - 1].nav;
+          const values = replicateCashflowSeries(
+            transactions,
+            benchmarkHistory,
+            periodEnds,
+            todayIso,
+            latestPrice
+          );
+          const totalInvested = points.length > 0 ? points[points.length - 1].invested : 0;
+          const latestValue = values.length > 0 ? values[values.length - 1] : 0;
+          result.benchmark = {
+            benchmarkId: chosen.id,
+            label: chosen.label,
+            isCategoryDefault: chosen.id === autoChoice.id,
+            values,
+            returnPct: totalInvested > 0 ? ((latestValue - totalInvested) / totalInvested) * 100 : 0,
+          };
+        }
+      } catch (err) {
+        console.error('Failed to fetch benchmark history:', err);
+        // Benchmark comparison is best-effort; omit it rather than failing the whole chart.
+      }
+    }
+  }
 
   return NextResponse.json(result);
 }
