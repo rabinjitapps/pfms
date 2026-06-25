@@ -68,6 +68,35 @@ export interface FundGrowthPoint {
   current: number;   // units held as of period end, valued at the NAV on/before period end
 }
 
+export interface TermBucket {
+  units: number;
+  invested: number;
+  currentValue: number;
+}
+
+// Split of units currently held into "long term" (>= 1 year old, the usual
+// equity-MF capital-gains cutoff in India) vs "short term", each lot dated
+// by FIFO purchase order. Valued as of today.
+export interface TermSplit {
+  shortTerm: TermBucket;
+  longTerm: TermBucket;
+}
+
+export interface BenchmarkOption {
+  id: string;
+  label: string;
+}
+
+// One benchmark's replicated value series, aligned 1:1 with the parent
+// FundGrowthData.points array (same `period` ordering).
+export interface BenchmarkSeries {
+  benchmarkId: string;
+  label: string;
+  isCategoryDefault: boolean; // true if this is the auto-picked match for the fund's category
+  values: number[]; // replicated value at each period, same length/order as points
+  returnPct: number; // (latest value - total invested) / total invested * 100
+}
+
 export interface FundGrowthData {
   holdingId: string;
   fundName: string;
@@ -75,6 +104,10 @@ export interface FundGrowthData {
   points: FundGrowthPoint[];
   availableYears: number[]; // years with at least one transaction, ascending, through the current year
   navEstimated: boolean;    // true if historical NAVs could not be fetched and current value is approximated
+  currentUnits?: number;     // units held as of today (omitted for the combined "whole investment" view)
+  termSplit?: TermSplit;
+  benchmark?: BenchmarkSeries;
+  availableBenchmarks?: BenchmarkOption[];
 }
 
 // ----------------------------------------------------------------------
