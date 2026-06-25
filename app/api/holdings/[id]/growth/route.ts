@@ -180,13 +180,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           );
           const totalInvested = points.length > 0 ? points[points.length - 1].invested : 0;
           const latestValue = values.length > 0 ? values[values.length - 1] : 0;
-          result.benchmark = {
-            benchmarkId: chosen.id,
-            label: chosen.label,
-            isCategoryDefault: chosen.id === autoChoice.id,
-            values,
-            returnPct: totalInvested > 0 ? ((latestValue - totalInvested) / totalInvested) * 100 : 0,
-          };
+          // A real investment (totalInvested > 0) can never legitimately
+          // replicate to exactly ₹0 in a broad index — that combination
+          // means the benchmark data didn't actually cover this fund's
+          // transaction dates (e.g. a sparse index history on Yahoo).
+          // Surfacing it as "-100%" would be misleading, so omit the
+          // comparison instead of showing a fabricated total-loss figure.
+          const isUsable = !(totalInvested > 0 && latestValue <= 0);
+          if (isUsable) {
+            result.benchmark = {
+              benchmarkId: chosen.id,
+              label: chosen.label,
+              isCategoryDefault: chosen.id === autoChoice.id,
+              values,
+              returnPct: totalInvested > 0 ? ((latestValue - totalInvested) / totalInvested) * 100 : 0,
+            };
+          } else {
+            console.warn(
+              `Benchmark comparison for ${chosen.label} produced an unusable result (totalInvested=${totalInvested}, latestValue=${latestValue}); omitting.`
+            );
+          }
         }
       } catch (err) {
         console.error('Failed to fetch benchmark history:', err);
