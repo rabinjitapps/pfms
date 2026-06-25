@@ -39,6 +39,18 @@ export function categoryBenchmark(category: string | null): BenchmarkOption {
   if (c.includes('large cap') || c.includes('largecap') || c.includes('bluechip')) return BENCHMARKS[1];
   if (c.includes('flexi cap') || c.includes('multi cap') || c.includes('elss') || c.includes('focused'))
     return BENCHMARKS[2];
+  // Hybrid / multi-asset / balanced-advantage / value funds don't map onto
+  // a single cap-size index — Nifty 500 (broad market) is a closer fit
+  // than Nifty 50, and avoids implying these are pure large-cap funds.
+  if (
+    c.includes('hybrid') ||
+    c.includes('multi asset') ||
+    c.includes('balanced advantage') ||
+    c.includes('value') ||
+    c.includes('retirement') ||
+    c.includes('solution oriented')
+  )
+    return BENCHMARKS[2];
   return BENCHMARKS[0];
 }
 
@@ -106,6 +118,17 @@ export function replicateCashflowSeries(
     return a.created_at < b.created_at ? -1 : 1;
   });
 
+  // Some benchmark indices (e.g. niche cap-size tickers on Yahoo Finance)
+  // have a shorter price history than the fund itself. Without this,
+  // any transaction dated before the benchmark series starts has no
+  // matching price, gets silently skipped, and — if it happens to *every*
+  // transaction in a holding — virtualUnits stays 0 for the whole series,
+  // producing a phantom -100% return even though the index obviously
+  // didn't go to zero. Falling back to the earliest known benchmark price
+  // keeps the comparison meaningful: "invested from the earliest point we
+  // have data for" instead of "invested nowhere".
+  const earliestBenchmarkPrice = benchmarkHistory.length > 0 ? benchmarkHistory[0].nav : null;
+
   let virtualUnits = 0;
   let txnIdx = 0;
   const values: number[] = [];
@@ -114,7 +137,7 @@ export function replicateCashflowSeries(
     const cutoff = periodEnd > todayIso ? todayIso : periodEnd;
     while (txnIdx < chronological.length && chronological[txnIdx].date <= cutoff) {
       const t = chronological[txnIdx];
-      const priceOnDate = navOnOrBefore(benchmarkHistory, t.date);
+      const priceOnDate = navOnOrBefore(benchmarkHistory, t.date) ?? earliestBenchmarkPrice;
       if (priceOnDate && priceOnDate > 0) {
         const sign = t.type === 'BUY' ? 1 : -1;
         virtualUnits += (sign * Number(t.amount)) / priceOnDate;
