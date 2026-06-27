@@ -13,7 +13,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { categoryId, direction, date, amount, notes } = body;
+  const { categoryId, direction, date, amount, notes, accountId } = body;
 
   if (!categoryId || !direction || !date || !amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -29,7 +29,7 @@ export async function PATCH(
 
   const { data: existing } = await supabaseAdmin
     .from('expense_entries')
-    .select('id, user_id')
+    .select('id, user_id, account_id')
     .eq('id', id)
     .maybeSingle();
 
@@ -49,22 +49,94 @@ export async function PATCH(
     return NextResponse.json({ error: 'Head not found' }, { status: 404 });
   }
 
+  // Bank account is optional — same ownership check as on create.
+  let resolvedAccountId: string | null = null;
+  if (accountId) {
+    const { data: account } = await supabaseAdmin
+      .from('bank_accounts')
+      .select('id, user_id')
+      .eq('id', accountId)
+      .maybeSingle();
+    if (!account || account.user_id !== userId) {
+      return NextResponse.json({ error: 'Bank account not found' }, { status: 404 });
+    }
+    resolvedAccountId = account.id;
+  }
+
+  const roundedAmount = Math.round(amountNum * 100) / 100;
+
   const { data: entry, error } = await supabaseAdmin
     .from('expense_entries')
     .update({
       category_id: categoryId,
       direction,
       date,
-      amount: Math.round(amountNum * 100) / 100,
+      amount: roundedAmount,
       notes: notes || null,
+      account_id: resolvedAccountId,
     })
     .eq('id', id)
-    .select('*, category:expense_categories(*)')
+    .select('*, category:expense_categories(*), account:bank_accounts(id, name)')
     .single();
 
   if (error || !entry) {
     console.error('Failed to update expense entry:', error);
     return NextResponse.json({ error: 'Failed to update entry' }, { status: 500 });
+  }
+
+  // Keep the mirrored bank_transactions row (if any) in sync with whatever
+  // changed — including the account itself being added, removed, or swapped.
+  const { data: mirrorRow } = await supabaseAdmin
+    .from('bank_transactions')
+    .select('id, account_id')
+    .eq('expense_entry_id', id)
+    .maybeSingle();
+
+  if (resolvedAccountId && mirrorRow) {
+    // Still linked to a bank account (possibly a different one) — update
+    // the existing mirror row in place rather than delete+recreate, since
+    // its id may be referenced elsewhere (e.g. already-expanded UI state).
+    const { error: mirrorError } = await supabaseAdmin
+      .from('bank_transactions')
+      .update({
+        account_id: resolvedAccountId,
+        date,
+        type: direction === 'INFLOW' ? 'credit' : 'debit',
+        amount: roundedAmount,
+        description: notes || entry.category?.name || null,
+        category: entry.category?.name ?? null,
+      })
+      .eq('id', mirrorRow.id);
+    if (mirrorError) {
+      console.error('Failed to update mirrored bank transaction:', mirrorError);
+    }
+  } else if (resolvedAccountId && !mirrorRow) {
+    // Account was just added to a previously-unlinked entry — create the
+    // mirror row now.
+    const { error: mirrorError } = await supabaseAdmin.from('bank_transactions').insert({
+      user_id: userId,
+      account_id: resolvedAccountId,
+      date,
+      type: direction === 'INFLOW' ? 'credit' : 'debit',
+      amount: roundedAmount,
+      description: notes || entry.category?.name || null,
+      category: entry.category?.name ?? null,
+      transfer_id: null,
+      expense_entry_id: id,
+    });
+    if (mirrorError) {
+      console.error('Failed to create mirrored bank transaction:', mirrorError);
+    }
+  } else if (!resolvedAccountId && mirrorRow) {
+    // Account was removed from this entry — drop the mirror row so it
+    // doesn't keep showing on a ledger it's no longer linked to.
+    const { error: mirrorError } = await supabaseAdmin
+      .from('bank_transactions')
+      .delete()
+      .eq('id', mirrorRow.id);
+    if (mirrorError) {
+      console.error('Failed to remove mirrored bank transaction:', mirrorError);
+    }
   }
 
   return NextResponse.json({ entry });
@@ -98,5 +170,8 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete entry' }, { status: 500 });
   }
 
+  // If this entry was linked to a bank account, its mirrored bank_transactions
+  // row is cleaned up automatically by the expense_entry_id ON DELETE CASCADE
+  // foreign key — no separate delete needed here.
   return NextResponse.json({ success: true });
 }
