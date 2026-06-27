@@ -273,6 +273,7 @@ export default function StockTracker({ displayName }: { displayName: string }) {
                     )}
                     <p className={styles.holdingMeta}>
                       {h.totalQuantity.toLocaleString('en-IN', { maximumFractionDigits: 4 })} shares
+                      {' · Avg ₹'}{h.avgPrice.toFixed(2)}
                       {' · '}₹{(h.stock.latest_price ?? 0).toFixed(2)}
                       {h.stock.latest_price_date && (
                         <span className={styles.holdingDate}> as of {h.stock.latest_price_date}</span>

@@ -281,6 +281,7 @@ export default function Dashboard({ displayName }: { displayName: string }) {
                     )}
                     <p className={styles.holdingMeta}>
                       {h.totalUnits.toLocaleString('en-IN', { maximumFractionDigits: 4 })} units
+                      {' · Avg NAV ₹'}{h.avgNav.toFixed(2)}
                       {' · NAV ₹'}{(h.fund.latest_nav ?? 0).toFixed(2)}
                       {h.fund.latest_nav_date && (
                         <span className={styles.holdingDate}> as of {h.fund.latest_nav_date}</span>
