@@ -25,6 +25,10 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
   const [interestOnlyValue, setInterestOnlyValue] = useState('');
   const [interestOnlyUnit, setInterestOnlyUnit] = useState<LoanTenureUnit>('years');
 
+  // monthly-only field — the rate is entered per month here, but stored
+  // (and shown everywhere else) as its annual equivalent, like every other loan.
+  const [monthlyRateInput, setMonthlyRateInput] = useState('');
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +42,7 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
       setTenureUnit(existing.tenure_unit);
       setEmiStartDate(existing.emi_start_date);
       setInterestRateInput(existing.interest_rate ? String(existing.interest_rate) : '');
+      setMonthlyRateInput(existing.interest_rate ? String(existing.interest_rate / 12) : '');
       setInterestOnlyValue(existing.interest_only_value ? String(existing.interest_only_value) : '');
       setInterestOnlyUnit(existing.interest_only_unit ?? 'years');
     }
@@ -49,9 +54,14 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
   const totalMonths = tenureUnit === 'years' ? tenureNum * 12 : tenureNum;
 
   const rateNum = Number(interestRateInput);
+  const monthlyRateNum = Number(monthlyRateInput);
   const ioValueNum = Number(interestOnlyValue);
   const interestOnlyMonths =
-    ioValueNum > 0 ? (interestOnlyUnit === 'years' ? Math.round(ioValueNum * 12) : Math.round(ioValueNum)) : 0;
+    loanType === 'flexi' && ioValueNum > 0
+      ? interestOnlyUnit === 'years'
+        ? Math.round(ioValueNum * 12)
+        : Math.round(ioValueNum)
+      : 0;
   const amortizingMonths = totalMonths - interestOnlyMonths;
 
   // ── Live preview ──
@@ -69,6 +79,13 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
     previewEmi = emiNum > 0 ? emiNum : null;
     totalPayable = emiNum > 0 && totalMonths > 0 ? emiNum * totalMonths : null;
     totalInterest = totalPayable != null && principalNum > 0 ? totalPayable - principalNum : null;
+  } else if (loanType === 'monthly') {
+    if (principalNum > 0 && monthlyRateNum > 0 && totalMonths > 0) {
+      previewRate = monthlyRateNum * 12;
+      previewEmi = calcEmiFromRate(principalNum, previewRate, totalMonths);
+      totalPayable = previewEmi * totalMonths;
+      totalInterest = totalPayable - principalNum;
+    }
   } else {
     if (principalNum > 0 && rateNum > 0 && totalMonths > 0 && amortizingMonths > 0) {
       previewRate = rateNum;
@@ -91,6 +108,11 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
 
     if (loanType === 'standard') {
       if (!emiNum || emiNum <= 0) { setError('EMI amount must be positive.'); return; }
+    } else if (loanType === 'monthly') {
+      if (!monthlyRateNum || monthlyRateNum <= 0) {
+        setError('Monthly interest rate must be positive.');
+        return;
+      }
     } else {
       if (!rateNum || rateNum <= 0) { setError('Interest rate must be positive.'); return; }
       if (ioValueNum < 0) { setError('Interest-only period cannot be negative.'); return; }
@@ -116,6 +138,8 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
 
       if (loanType === 'standard') {
         payload.emi_amount = emiNum;
+      } else if (loanType === 'monthly') {
+        payload.monthly_interest_rate = monthlyRateNum;
       } else {
         payload.interest_rate = rateNum;
         payload.interest_only_value = ioValueNum || 0;
@@ -187,10 +211,23 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
               >
                 Flexi (Interest-only + EMI)
               </button>
+              <button
+                type="button"
+                className={loanType === 'monthly' ? `${styles.typeBtn} ${styles.typeBtnActive}` : styles.typeBtn}
+                onClick={() => setLoanType('monthly')}
+              >
+                Monthly Rate (e.g. Instamoney)
+              </button>
             </div>
             {loanType === 'flexi' && (
               <p className={styles.typeHint}>
                 Pay interest only for an initial period, then the loan converts to a regular EMI for the rest of the tenure.
+              </p>
+            )}
+            {loanType === 'monthly' && (
+              <p className={styles.typeHint}>
+                For lenders that quote a monthly rate (common with short-term/instant loan apps). Enter the
+                monthly % and it's shown everywhere else as the equivalent annual rate, just like other loans.
               </p>
             )}
           </div>
@@ -220,6 +257,20 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
                   placeholder="e.g. 22000"
                   value={emiAmount}
                   onChange={(e) => setEmiAmount(e.target.value)}
+                  required
+                />
+              </div>
+            ) : loanType === 'monthly' ? (
+              <div className={styles.field}>
+                <label className={styles.label}>Interest Rate (% per month)</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="e.g. 4.33"
+                  value={monthlyRateInput}
+                  onChange={(e) => setMonthlyRateInput(e.target.value)}
                   required
                 />
               </div>
@@ -312,10 +363,21 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
             <div className={styles.previewCard}>
               <div className={styles.previewRow}>
                 <span className={styles.previewLabel}>
-                  {loanType === 'standard' ? 'Interest Rate (auto-calculated)' : 'Interest Rate'}
+                  {loanType === 'standard'
+                    ? 'Interest Rate (auto-calculated)'
+                    : loanType === 'monthly'
+                    ? 'Interest Rate (annual equivalent)'
+                    : 'Interest Rate'}
                 </span>
                 <span className={styles.previewRate}>{previewRate.toFixed(2)}% p.a.</span>
               </div>
+
+              {loanType === 'monthly' && (
+                <div className={styles.previewRow}>
+                  <span className={styles.previewLabel}>Monthly Rate</span>
+                  <span className={styles.previewValue}>{monthlyRateNum.toFixed(2)}% / mo</span>
+                </div>
+              )}
 
               {loanType === 'flexi' && previewInterestOnlyPayment !== null && (
                 <div className={styles.previewRow}>

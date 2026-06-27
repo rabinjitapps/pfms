@@ -194,6 +194,7 @@ function LoanCard({
         <div className={styles.loanCardTitle}>
           <h3 className={styles.loanName}>{loan.name}</h3>
           {loan.loan_type === 'flexi' && <span className={styles.flexiBadge}>FLEXI</span>}
+          {loan.loan_type === 'monthly' && <span className={styles.flexiBadge}>MONTHLY RATE</span>}
           <span className={styles.loanRate}>{loan.interest_rate.toFixed(2)}% p.a.</span>
         </div>
         <div className={styles.loanCardActions}>
