@@ -125,6 +125,7 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
   const totalEmisAll = summaries.reduce((s, ls) => s + ls.total_emis, 0);
   const paidCountAll = summaries.reduce((s, ls) => s + ls.paid_count, 0);
   const percentComplete = totalEmisAll > 0 ? Math.round((paidCountAll / totalEmisAll) * 100) : 100;
+  const totalAmountPaidAll = summaries.reduce((s, ls) => s + ls.total_amount_paid, 0);
 
   const pendingSummaries = summaries.filter((ls) => ls.pending_count > 0);
   const debtFreeDate =
@@ -143,6 +144,7 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
     upcoming_months: upcomingMonths,
     percent_complete: percentComplete,
     debt_free_date: debtFreeDate,
+    total_amount_paid: totalAmountPaidAll,
   };
 }
 
