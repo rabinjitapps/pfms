@@ -334,4 +334,5 @@ export interface LoanPortfolioSummary {
   upcoming_months: { month: string; label: string; amount: number }[]; // chronological, strictly after the current month
   percent_complete: number; // combined EMI count paid / total EMI count across every loan
   debt_free_date: string; // ISO date of the last EMI across the whole portfolio (the loan that finishes last)
+  total_amount_paid: number; // sum of every loan's total_amount_paid, for the debt-free countdown's ₹ figures
 }
