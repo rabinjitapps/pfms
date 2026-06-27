@@ -59,13 +59,14 @@ export async function POST(req: NextRequest) {
     loan_type,
   } = body;
 
-  const loanType: LoanType = loan_type === 'flexi' ? 'flexi' : 'standard';
+  const loanType: LoanType =
+    loan_type === 'flexi' ? 'flexi' : loan_type === 'monthly' ? 'monthly' : 'standard';
 
   if (!name || !principal || !tenure_value || !tenure_unit || !emi_start_date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
-  // emi_amount is only required up-front for standard loans; flexi loans
-  // derive it from the interest rate instead.
+  // emi_amount is only required up-front for standard loans; flexi/monthly
+  // loans derive it from the interest rate instead.
   if (loanType === 'standard' && !body.emi_amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
@@ -91,36 +92,60 @@ export async function POST(req: NextRequest) {
   let interestOnlyMonths = 0;
   let interestOnlyPayment = 0;
 
-  if (loanType === 'flexi') {
-    const rateNum = Number(body.interest_rate);
-    if (!rateNum || rateNum <= 0) {
-      return NextResponse.json(
-        { error: 'Interest rate must be positive for a flexi loan' },
-        { status: 400 }
-      );
+  if (loanType === 'flexi' || loanType === 'monthly') {
+    // 'monthly' loans are entered as a monthly %, so the annual-equivalent
+    // rate used for the EMI math (and stored on the loan) is that monthly
+    // rate * 12 — everything downstream then treats it exactly like a
+    // flexi loan's directly-entered annual rate.
+    let rateNum: number;
+    if (loanType === 'monthly') {
+      const monthlyRateNum = Number(body.monthly_interest_rate);
+      if (!monthlyRateNum || monthlyRateNum <= 0) {
+        return NextResponse.json(
+          { error: 'Monthly interest rate must be positive' },
+          { status: 400 }
+        );
+      }
+      rateNum = monthlyRateNum * 12;
+    } else {
+      rateNum = Number(body.interest_rate);
+      if (!rateNum || rateNum <= 0) {
+        return NextResponse.json(
+          { error: 'Interest rate must be positive for a flexi loan' },
+          { status: 400 }
+        );
+      }
     }
-    if (!['months', 'years'].includes(body.interest_only_unit)) {
-      return NextResponse.json({ error: 'Invalid interest-only unit' }, { status: 400 });
-    }
-    interestOnlyUnit = body.interest_only_unit as LoanTenureUnit;
-    interestOnlyValue = Number(body.interest_only_value);
-    if (!(interestOnlyValue >= 0)) {
-      return NextResponse.json({ error: 'Interest-only period must be zero or positive' }, { status: 400 });
-    }
-    interestOnlyMonths =
-      interestOnlyUnit === 'years' ? Math.round(interestOnlyValue * 12) : Math.round(interestOnlyValue);
 
-    if (interestOnlyMonths >= totalMonths) {
-      return NextResponse.json(
-        { error: 'Interest-only period must be shorter than the total tenure' },
-        { status: 400 }
-      );
+    if (loanType === 'flexi') {
+      if (!['months', 'years'].includes(body.interest_only_unit)) {
+        return NextResponse.json({ error: 'Invalid interest-only unit' }, { status: 400 });
+      }
+      interestOnlyUnit = body.interest_only_unit as LoanTenureUnit;
+      interestOnlyValue = Number(body.interest_only_value);
+      if (!(interestOnlyValue >= 0)) {
+        return NextResponse.json(
+          { error: 'Interest-only period must be zero or positive' },
+          { status: 400 }
+        );
+      }
+      interestOnlyMonths =
+        interestOnlyUnit === 'years' ? Math.round(interestOnlyValue * 12) : Math.round(interestOnlyValue);
+
+      if (interestOnlyMonths >= totalMonths) {
+        return NextResponse.json(
+          { error: 'Interest-only period must be shorter than the total tenure' },
+          { status: 400 }
+        );
+      }
     }
+    // 'monthly' loans have no interest-only phase — interestOnlyMonths
+    // stays 0, so the amortizing period below is simply the full tenure.
 
     const amortizingMonths = totalMonths - interestOnlyMonths;
     interestRate = rateNum;
     emiNum = calcEmiFromRate(principalNum, rateNum, amortizingMonths);
-    interestOnlyPayment = calcInterestOnlyPayment(principalNum, rateNum);
+    interestOnlyPayment = loanType === 'flexi' ? calcInterestOnlyPayment(principalNum, rateNum) : 0;
   } else {
     emiNum = Number(body.emi_amount);
     if (emiNum <= 0) {
