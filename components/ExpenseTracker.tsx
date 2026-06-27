@@ -54,6 +54,7 @@ function groupByDate(entries: ExpenseEntry[]): { date: string; entries: ExpenseE
 
 export default function ExpenseTracker({ displayName }: { displayName: string }) {
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
+  const [bankAccounts, setBankAccounts] = useState<{ id: string; name: string }[]>([]);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -90,9 +91,30 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
     }
   }, []);
 
+  // Bank accounts for the "which account did this move through" picker —
+  // loaded once and kept separate from the month-scoped expense summary,
+  // since the account list itself doesn't change as the person browses
+  // between months.
+  const loadBankAccounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bank-accounts');
+      if (!res.ok) return;
+      const data = await res.json();
+      const accounts = (data.portfolio?.accounts ?? []) as { account: { id: string; name: string } }[];
+      setBankAccounts(accounts.map((a) => ({ id: a.account.id, name: a.account.name })));
+    } catch {
+      // Non-fatal — the account picker just stays empty (entries can still
+      // be saved unlinked) if this fails.
+    }
+  }, []);
+
   useEffect(() => {
     load(month);
   }, [load, month]);
+
+  useEffect(() => {
+    loadBankAccounts();
+  }, [loadBankAccounts]);
 
   // A date/head filter picked while looking at one month rarely makes
   // sense after jumping to another, so clear them on every month change.
@@ -108,6 +130,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
     if (!confirm('Delete this entry? This cannot be undone.')) return;
     await fetch(`/api/expense-entries/${id}`, { method: 'DELETE' });
     refresh();
+    loadBankAccounts();
   }
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -185,6 +208,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
     } else {
       refresh();
     }
+    loadBankAccounts();
   }
 
   if (loading) {
@@ -385,6 +409,9 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
                             {entry.direction === 'INFLOW' ? 'In' : 'Out'}
                           </span>
                           <span className={styles.entryHead}>{entry.category.name}</span>
+                          {entry.account?.name && (
+                            <span className={styles.entryNotes}>via {entry.account.name}</span>
+                          )}
                           {entry.notes && <span className={styles.entryNotes}>{entry.notes}</span>}
                         </div>
                         <span
@@ -423,6 +450,7 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
         {showAddModal && (
           <AddExpenseModal
             categories={summary?.categories ?? []}
+            bankAccounts={bankAccounts}
             defaultDirection={defaultDirection}
             editingEntry={editingEntry}
             onClose={closeAddModal}

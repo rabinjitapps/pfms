@@ -3,8 +3,14 @@
 import { useState, useMemo } from 'react';
 import { ExpenseCategory, ExpenseDirection, ExpenseEntry } from '@/types';
 
+interface BankAccountOption {
+  id: string;
+  name: string;
+}
+
 interface Props {
   categories: ExpenseCategory[];
+  bankAccounts: BankAccountOption[];
   defaultDirection: ExpenseDirection;
   editingEntry?: ExpenseEntry | null;
   onClose: () => void;
@@ -12,9 +18,11 @@ interface Props {
 }
 
 const NEW_HEAD_VALUE = '__new__';
+const NO_ACCOUNT_VALUE = '';
 
 export default function AddExpenseModal({
   categories,
+  bankAccounts,
   defaultDirection,
   editingEntry = null,
   onClose,
@@ -30,6 +38,7 @@ export default function AddExpenseModal({
   const [date, setDate] = useState(editingEntry?.date ?? new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState(editingEntry ? String(editingEntry.amount) : '');
   const [notes, setNotes] = useState(editingEntry?.notes ?? '');
+  const [accountId, setAccountId] = useState(editingEntry?.account_id ?? NO_ACCOUNT_VALUE);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -96,6 +105,7 @@ export default function AddExpenseModal({
           date,
           amount: amountNum,
           notes: notes.trim() || null,
+          accountId: accountId || null,
         }),
       });
       const data = await res.json();
@@ -186,6 +196,27 @@ export default function AddExpenseModal({
             />
           </label>
         </div>
+
+        <label style={styles.label}>
+          Bank account <span style={styles.optional}>(optional)</span>
+          <select
+            style={styles.input}
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+          >
+            <option value={NO_ACCOUNT_VALUE}>No account — not tied to a bank</option>
+            {bankAccounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+          {bankAccounts.length > 0 && accountId && (
+            <span style={styles.hint}>
+              This will also show up as a {direction === 'INFLOW' ? 'credit' : 'debit'} on that account's ledger.
+            </span>
+          )}
+        </label>
 
         <label style={styles.label}>
           Notes <span style={styles.optional}>(optional)</span>
@@ -313,6 +344,13 @@ const styles: Record<string, React.CSSProperties> = {
   optional: {
     color: 'var(--ink-faint)',
     fontWeight: 400,
+  },
+  hint: {
+    display: 'block',
+    fontSize: '11.5px',
+    color: 'var(--ink-faint)',
+    fontWeight: 400,
+    marginTop: '6px',
   },
   input: {
     width: '100%',

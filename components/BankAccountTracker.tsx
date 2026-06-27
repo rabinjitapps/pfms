@@ -13,7 +13,7 @@ interface Props {
 }
 
 function fmt(n: number): string {
-  return n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtCurrency(n: number): string {
@@ -241,6 +241,7 @@ function AccountCard({
                       ? `Transfer ${t.type === 'debit' ? 'to' : 'from'} ${t.transfer_account_name ?? 'another account'}`
                       : t.description || (t.type === 'credit' ? 'Credit' : 'Debit')}
                     {t.category && <span className={styles.categoryBadge}>{t.category}</span>}
+                    {t.expense_entry_id && <span className={styles.categoryBadge}>via Expenses</span>}
                   </span>
                 </div>
                 <div className={styles.ledgerRight}>
@@ -250,7 +251,7 @@ function AccountCard({
                   </span>
                   <span className={styles.ledgerRunning}>Bal {fmtCurrency(t.running_balance)}</span>
                   <div className={styles.ledgerActions}>
-                    {!t.transfer_id && (
+                    {!t.transfer_id && !t.expense_entry_id && (
                       <button
                         className={styles.iconBtnSmall}
                         onClick={() => onEditTransaction(t)}
@@ -270,7 +271,7 @@ function AccountCard({
                     <button
                       className={styles.iconBtnSmallDanger}
                       onClick={() => onDeleteTransaction(t.id)}
-                      title="Delete transaction"
+                      title={t.expense_entry_id ? 'Delete (removes the linked Expenses entry too)' : 'Delete transaction'}
                     >
                       <svg viewBox="0 0 20 20" fill="none" width={13} height={13}>
                         <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
