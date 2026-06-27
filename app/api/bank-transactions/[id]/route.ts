@@ -29,6 +29,16 @@ export async function PATCH(
     );
   }
 
+  // Same idea for a row mirrored from an income/expense entry — it has to
+  // be edited from the Expenses page so the two stay in sync, rather than
+  // letting this side drift out of step with the entry that created it.
+  if (existing.expense_entry_id) {
+    return NextResponse.json(
+      { error: 'This transaction came from an expense/income entry — edit it from the Expenses page instead.' },
+      { status: 400 }
+    );
+  }
+
   const body = await req.json();
   const { date, description, category } = body;
 
@@ -71,12 +81,29 @@ export async function DELETE(
 
   const { data: existing } = await supabaseAdmin
     .from('bank_transactions')
-    .select('id, user_id, transfer_id')
+    .select('id, user_id, transfer_id, expense_entry_id')
     .eq('id', id)
     .maybeSingle();
 
   if (!existing || existing.user_id !== userId) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  // This row exists only because an income/expense entry was logged against
+  // this account — delete that entry instead, which cascades back to remove
+  // this mirrored row too. Deleting just this row would leave a dangling
+  // entry on the Expenses page with no ledger trace.
+  if (existing.expense_entry_id) {
+    const { error: entryError } = await supabaseAdmin
+      .from('expense_entries')
+      .delete()
+      .eq('id', existing.expense_entry_id)
+      .eq('user_id', userId);
+    if (entryError) {
+      console.error('Failed to delete source expense entry for mirrored transaction:', entryError);
+      return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
   }
 
   // Deleting one leg of a transfer removes both, scoped to this user, so the
