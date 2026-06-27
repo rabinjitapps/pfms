@@ -488,6 +488,12 @@ export default function LoanTracker({ displayName }: Props) {
                   </span>
                 </div>
                 <ProgressBar pct={portfolio.percent_complete} color="var(--brass)" />
+                <div className={styles.progressAmounts}>
+                  <span className={styles.paidAmount}>{fmtCurrency(portfolio.total_amount_paid)} paid</span>
+                  <span className={styles.pendingAmount}>
+                    {fmtCurrency(portfolio.total_outstanding)} remaining
+                  </span>
+                </div>
                 <div className={styles.debtFreeFooter}>
                   <span className={styles.paidAmount}>{portfolio.percent_complete}% paid off</span>
                   <span className={styles.pendingAmount}>
