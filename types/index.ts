@@ -194,6 +194,14 @@ export interface ExpenseEntry {
   notes: string | null;
   created_at: string;
   category: ExpenseCategory;
+  // Bank account this entry actually moved money through. Optional — an
+  // entry can be left unlinked (e.g. cash). When set, the API mirrors this
+  // entry as a matching credit/debit row in that account's bank_transactions
+  // ledger, so it shows up there too.
+  account_id: string | null;
+  // Joined for display only (e.g. "via HDFC Salary Account"); not present
+  // on every fetch.
+  account?: { id: string; name: string } | null;
 }
 
 export interface ExpenseSummary {
@@ -379,6 +387,11 @@ export interface BankTransaction {
   // together. Null for an ordinary credit/debit.
   transfer_id: string | null;
   transfer_account_name: string | null; // the OTHER account's name, attached client-side for display only
+  // Set when this row was created automatically because an income/expense
+  // entry was logged against this account — links back to that entry so an
+  // edit or delete on the expense side can keep this mirrored row in sync.
+  // Null for a transaction added directly from the Bank Accounts page.
+  expense_entry_id: string | null;
   created_at: string;
 }
 
