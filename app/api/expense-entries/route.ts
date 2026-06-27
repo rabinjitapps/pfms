@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       .order('name', { ascending: true }),
     supabaseAdmin
       .from('expense_entries')
-      .select('*, category:expense_categories(*)')
+      .select('*, category:expense_categories(*), account:bank_accounts(id, name)')
       .eq('user_id', userId)
       .gte('date', start)
       .lte('date', end)
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { categoryId, direction, date, amount, notes } = body;
+  const { categoryId, direction, date, amount, notes, accountId } = body;
 
   if (!categoryId || !direction || !date || !amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -169,6 +169,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Head not found' }, { status: 404 });
   }
 
+  // Bank account is optional (an entry can stay unlinked, e.g. cash) — but
+  // if one is given, it has to actually belong to this user.
+  let resolvedAccountId: string | null = null;
+  if (accountId) {
+    const { data: account } = await supabaseAdmin
+      .from('bank_accounts')
+      .select('id, user_id')
+      .eq('id', accountId)
+      .maybeSingle();
+    if (!account || account.user_id !== userId) {
+      return NextResponse.json({ error: 'Bank account not found' }, { status: 404 });
+    }
+    resolvedAccountId = account.id;
+  }
+
+  const roundedAmount = Math.round(amountNum * 100) / 100;
+
   const { data: entry, error } = await supabaseAdmin
     .from('expense_entries')
     .insert({
@@ -176,8 +193,9 @@ export async function POST(req: NextRequest) {
       category_id: categoryId,
       direction,
       date,
-      amount: Math.round(amountNum * 100) / 100,
+      amount: roundedAmount,
       notes: notes || null,
+      account_id: resolvedAccountId,
     })
     .select('*, category:expense_categories(*)')
     .single();
@@ -185,6 +203,30 @@ export async function POST(req: NextRequest) {
   if (error || !entry) {
     console.error('Failed to create expense entry:', error);
     return NextResponse.json({ error: 'Failed to save entry' }, { status: 500 });
+  }
+
+  // Mirror onto the bank account's own ledger, so the same transaction shows
+  // up there too (credit for income, debit for expense) — kept in sync via
+  // expense_entry_id rather than duplicated logic in two places.
+  if (resolvedAccountId) {
+    const { error: mirrorError } = await supabaseAdmin.from('bank_transactions').insert({
+      user_id: userId,
+      account_id: resolvedAccountId,
+      date,
+      type: direction === 'INFLOW' ? 'credit' : 'debit',
+      amount: roundedAmount,
+      description: notes || entry.category?.name || null,
+      category: entry.category?.name ?? null,
+      transfer_id: null,
+      expense_entry_id: entry.id,
+    });
+    if (mirrorError) {
+      console.error('Failed to mirror expense entry into bank transactions:', mirrorError);
+      // Don't fail the whole request over this — the expense entry itself
+      // saved fine; the bank ledger just won't show this one until it's
+      // investigated. Surfacing a 500 here would lose the entry data on
+      // the client even though it's already safely stored.
+    }
   }
 
   return NextResponse.json({ entry });
