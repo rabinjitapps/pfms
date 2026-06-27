@@ -344,3 +344,59 @@ export interface LoanPortfolioSummary {
   debt_free_date: string; // ISO date of the last EMI across the whole portfolio (the loan that finishes last)
   total_amount_paid: number; // sum of every loan's total_amount_paid, for the debt-free countdown's ₹ figures
 }
+
+// ----------------------------------------------------------------------
+// Bank account tracker
+// ----------------------------------------------------------------------
+
+export type BankTransactionType = 'credit' | 'debit';
+
+export interface BankAccount {
+  id: string;
+  user_id: string;
+  name: string;                       // person's own label, e.g. "HDFC Salary Account"
+  bank_name: string | null;           // e.g. "HDFC Bank"
+  account_type: string | null;        // e.g. "Savings", "Current"
+  account_number_last4: string | null; // last 4 digits only — never store a full account number
+  opening_balance: number;
+  opening_date: string;               // YYYY-MM-DD
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BankTransaction {
+  id: string;
+  user_id: string;
+  account_id: string;
+  date: string;                       // YYYY-MM-DD
+  type: BankTransactionType;
+  amount: number;                     // always positive; direction comes from `type`
+  description: string | null;
+  category: string | null;            // free-text label, e.g. "Salary", "Rent"
+  // Set on BOTH legs of an internal transfer between two tracked accounts
+  // (a debit on the source, a credit on the destination) so the pair can be
+  // identified, displayed as one logical "Transfer" entry, and deleted
+  // together. Null for an ordinary credit/debit.
+  transfer_id: string | null;
+  transfer_account_name: string | null; // the OTHER account's name, attached client-side for display only
+  created_at: string;
+}
+
+// A single ledger row with its running balance, as returned within
+// BankAccountSummary — chronological ascending order (oldest first) so the
+// running balance can be computed left-to-right; the UI reverses it for
+// most-recent-first display.
+export type BankLedgerEntry = BankTransaction & { running_balance: number };
+
+export interface BankAccountSummary {
+  account: BankAccount;
+  balance: number; // opening_balance + credits - debits, as of now
+  total_credits: number; // all-time, for the account's at-a-glance stats
+  total_debits: number;
+  transactions: BankLedgerEntry[];
+}
+
+export interface BankPortfolioSummary {
+  accounts: BankAccountSummary[];
+  total_balance: number;
+}
