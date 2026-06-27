@@ -1,0 +1,245 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 27, 25, 0.45);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal {
+  background: var(--paper-raised);
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(28, 27, 25, 0.18);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.modalTitle {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 4px;
+  transition: color 0.12s;
+}
+
+.closeBtn:hover {
+  color: var(--brick);
+}
+
+.errorBanner {
+  background: var(--brick-soft);
+  color: var(--brick);
+  padding: 10px 24px;
+  font-size: 13.5px;
+}
+
+.form {
+  padding: 22px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.label {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.input,
+.select {
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.12s;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--ink);
+}
+
+/* ── type toggle (account type / transaction kind) ── */
+.typeToggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.typeBtn {
+  border: 1px solid var(--hairline);
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 9px 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+
+.typeBtn:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.typeBtnActive {
+  border-color: var(--brass);
+  background: var(--brass-soft);
+  color: var(--brass);
+  font-weight: 600;
+}
+
+.typeBtnActiveCredit {
+  border-color: var(--ledger-green);
+  background: var(--ledger-green-soft);
+  color: var(--ledger-green);
+  font-weight: 600;
+}
+
+.typeBtnActiveDebit {
+  border-color: var(--brick);
+  background: var(--brick-soft);
+  color: var(--brick);
+  font-weight: 600;
+}
+
+.typeHint {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin: 4px 0 0;
+}
+
+/* ── live balance preview ── */
+.previewCard {
+  background: var(--brass-soft);
+  border: 1px solid #ddd0b0;
+  border-radius: 4px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.previewLabel {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.previewValue {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── actions ── */
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.cancelBtn {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 9px 18px;
+  font-size: 14px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.cancelBtn:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.saveBtn {
+  background: var(--ink);
+  color: var(--paper-raised);
+  border: none;
+  border-radius: 4px;
+  padding: 9px 22px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.saveBtn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.saveBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (max-width: 500px) {
+  .row,
+  .typeToggle {
+    grid-template-columns: 1fr;
+  }
+  .modal {
+    border-radius: 4px;
+  }
+}
