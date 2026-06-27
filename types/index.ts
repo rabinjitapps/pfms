@@ -332,4 +332,6 @@ export interface LoanPortfolioSummary {
   total_outstanding: number;
   total_interest: number; // sum of total_interest across all loans (running + completed)
   upcoming_months: { month: string; label: string; amount: number }[]; // chronological, strictly after the current month
+  percent_complete: number; // combined EMI count paid / total EMI count across every loan
+  debt_free_date: string; // ISO date of the last EMI across the whole portfolio (the loan that finishes last)
 }
