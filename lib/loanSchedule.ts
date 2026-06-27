@@ -117,12 +117,32 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
       amount,
     }));
 
+  // Portfolio-wide debt-free countdown: the whole portfolio is only debt
+  // free once its slowest-finishing loan is paid off, so the date is the
+  // latest debt_free_date among loans that still have something pending.
+  // Progress is the combined EMI count paid across every loan, mirroring
+  // the per-loan percent_complete so the two read consistently.
+  const totalEmisAll = summaries.reduce((s, ls) => s + ls.total_emis, 0);
+  const paidCountAll = summaries.reduce((s, ls) => s + ls.paid_count, 0);
+  const percentComplete = totalEmisAll > 0 ? Math.round((paidCountAll / totalEmisAll) * 100) : 100;
+
+  const pendingSummaries = summaries.filter((ls) => ls.pending_count > 0);
+  const debtFreeDate =
+    pendingSummaries.length > 0
+      ? pendingSummaries.reduce(
+          (latest, ls) => (ls.debt_free_date > latest ? ls.debt_free_date : latest),
+          pendingSummaries[0].debt_free_date
+        )
+      : new Date().toISOString();
+
   return {
     loans: summaries,
     total_monthly_emi: totalMonthlyEmi,
     total_outstanding: totalOutstanding,
     total_interest: totalInterest,
     upcoming_months: upcomingMonths,
+    percent_complete: percentComplete,
+    debt_free_date: debtFreeDate,
   };
 }
 
