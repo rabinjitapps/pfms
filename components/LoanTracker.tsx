@@ -29,6 +29,39 @@ function debtFreeLabel(months: number): string {
   return parts.join(' ');
 }
 
+// Calendar-accurate years/months/days countdown to a target ISO date,
+// used for the portfolio-wide debt-free countdown where day-level
+// precision matters more than the per-loan month-level estimate.
+function timeUntil(targetIso: string): { label: string; days: number } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(targetIso);
+  target.setHours(0, 0, 0, 0);
+
+  const days = Math.round((target.getTime() - today.getTime()) / 86400000);
+  if (days <= 0) return { label: 'Debt free!', days: 0 };
+
+  let years = target.getFullYear() - today.getFullYear();
+  let months = target.getMonth() - today.getMonth();
+  let dayPart = target.getDate() - today.getDate();
+  if (dayPart < 0) {
+    months -= 1;
+    const prevMonth = new Date(target.getFullYear(), target.getMonth(), 0);
+    dayPart += prevMonth.getDate();
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years}y`);
+  if (months > 0) parts.push(`${months}m`);
+  if (dayPart > 0 || parts.length === 0) parts.push(`${dayPart}d`);
+
+  return { label: parts.join(' '), days };
+}
+
 // ── sub-components ────────────────────────────────────────────────────────────
 
 function ProgressBar({ pct, color }: { pct: number; color: string }) {
@@ -442,6 +475,27 @@ export default function LoanTracker({ displayName }: Props) {
                   </div>
                 </div>
               </div>
+
+              <div className={styles.summaryCard}>
+                <div className={styles.summaryHeading}>Debt-Free Countdown</div>
+                <div className={styles.progressHeader}>
+                  <span className={styles.progressLabel}>{portfolio.percent_complete}% complete</span>
+                  <span className={styles.debtFreeDate}>
+                    {new Date(portfolio.debt_free_date).toLocaleString('en-IN', {
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+                <ProgressBar pct={portfolio.percent_complete} color="var(--brass)" />
+                <div className={styles.debtFreeFooter}>
+                  <span className={styles.paidAmount}>{portfolio.percent_complete}% paid off</span>
+                  <span className={styles.pendingAmount}>
+                    Free in <strong>{timeUntil(portfolio.debt_free_date).label}</strong>
+                  </span>
+                </div>
+              </div>
+
               {portfolio.upcoming_months.length > 0 && (
                 <div className={styles.nextMonthCard}>
                   <button
