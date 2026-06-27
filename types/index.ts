@@ -268,7 +268,15 @@ export type LoanTenureUnit = 'months' | 'years';
 //              the remaining tenure (rate is entered directly; both the
 //              interest-only installment and the post-conversion EMI are
 //              derived from it).
-export type LoanType = 'standard' | 'flexi';
+// 'monthly'  = same reducing-balance EMI math as flexi with no interest-only
+//              phase, except the person enters the rate as a MONTHLY % (how
+//              many short-term/instant-loan lenders quote it) instead of an
+//              annual one. interest_rate is still stored as the annual
+//              equivalent (monthly rate * 12), so every other screen — the
+//              "X% p.a." badge on the loan card, the debt-free countdown,
+//              etc. — displays it exactly like any other loan with no
+//              special-casing needed.
+export type LoanType = 'standard' | 'flexi' | 'monthly';
 
 export interface Loan {
   id: string;
