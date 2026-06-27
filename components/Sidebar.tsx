@@ -6,7 +6,7 @@ import { signOut } from 'next-auth/react';
 import styles from './Sidebar.module.css';
 
 interface Props {
-  active: 'overview' | 'funds' | 'fund-analysis' | 'stocks' | 'expenses' | 'analysis' | 'loans' | 'reports';
+  active: 'overview' | 'funds' | 'fund-analysis' | 'stocks' | 'expenses' | 'analysis' | 'loans' | 'reports' | 'bank-accounts';
   displayName: string;
 }
 
@@ -136,6 +136,19 @@ export default function Sidebar({ active, displayName }: Props) {
               <path d="M7 4V2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
             Loans
+          </Link>
+          <Link
+            href="/bank-accounts"
+            className={active === 'bank-accounts' ? styles.navLinkActive : styles.navLink}
+            aria-current={active === 'bank-accounts' ? 'page' : undefined}
+            onClick={() => setOpen(false)}
+          >
+            <svg className={styles.navIcon} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M2.5 8.5L10 3.5l7.5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M4 8.5v7M8 8.5v7M12 8.5v7M16 8.5v7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M2.5 15.5h15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+            Bank Accounts
           </Link>
           <Link
             href="/reports"

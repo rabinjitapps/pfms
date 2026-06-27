@@ -2,7 +2,7 @@ import Sidebar from './Sidebar';
 import styles from './AppShell.module.css';
 
 interface Props {
-  active: 'overview' | 'funds' | 'fund-analysis' | 'stocks' | 'expenses' | 'analysis' | 'loans' | 'reports';
+  active: 'overview' | 'funds' | 'fund-analysis' | 'stocks' | 'expenses' | 'analysis' | 'loans' | 'reports' | 'bank-accounts';
   displayName: string;
   children: React.ReactNode;
 }
