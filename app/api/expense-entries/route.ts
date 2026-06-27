@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : currentMonth();
   const { start, end } = monthBounds(month);
 
-  const [categoriesRes, entriesRes, monthsRpcRes, carryForwardRpcRes] = await Promise.all([
+  const [categoriesRes, entriesRes, monthsRpcRes, carryForwardRpcRes, usageRes] = await Promise.all([
     supabaseAdmin
       .from('expense_categories')
       .select('*')
@@ -57,10 +57,23 @@ export async function GET(req: NextRequest) {
     // history grew past that, which is exactly what broke carry-forward
     // starting around July for accounts with several months of entries.
     supabaseAdmin.rpc('expense_carry_forward', { p_user_id: userId, p_before_date: start }),
+    // All-time category_id of every entry, used only to rank heads by how
+    // often they're used (most-used first) in the dropdowns below — not
+    // scoped to the current month, so the ordering stays stable as you
+    // browse between months.
+    supabaseAdmin
+      .from('expense_entries')
+      .select('category_id')
+      .eq('user_id', userId)
+      .range(0, 9999),
   ]);
 
   if (categoriesRes.error) {
     console.error('Failed to fetch expense categories:', categoriesRes.error);
+    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
+  }
+  if (usageRes.error) {
+    console.error('Failed to fetch expense category usage:', usageRes.error);
     return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
   }
   if (entriesRes.error) {
@@ -95,6 +108,20 @@ export async function GET(req: NextRequest) {
   }
   availableMonths.sort();
 
+  // Rank heads by how often they're actually used (all-time entry count),
+  // so the dropdowns surface the ones you reach for most instead of making
+  // you hunt alphabetically every time. Ties (including zero-use heads)
+  // fall back to alphabetical order.
+  const usageCounts = new Map<string, number>();
+  for (const row of (usageRes.data ?? []) as { category_id: string }[]) {
+    usageCounts.set(row.category_id, (usageCounts.get(row.category_id) ?? 0) + 1);
+  }
+  const categories = [...(categoriesRes.data ?? [])].sort((a, b) => {
+    const countDiff = (usageCounts.get(b.id) ?? 0) - (usageCounts.get(a.id) ?? 0);
+    if (countDiff !== 0) return countDiff;
+    return a.name.localeCompare(b.name);
+  });
+
   const summary: ExpenseSummary = {
     month,
     availableMonths,
@@ -103,7 +130,7 @@ export async function GET(req: NextRequest) {
     totalOutflow,
     net: totalInflow - totalOutflow,
     netWithCarryForward: carryForward + totalInflow - totalOutflow,
-    categories: categoriesRes.data ?? [],
+    categories,
     entries,
   };
 
