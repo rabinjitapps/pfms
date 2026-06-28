@@ -392,6 +392,10 @@ export interface BankTransaction {
   // edit or delete on the expense side can keep this mirrored row in sync.
   // Null for a transaction added directly from the Bank Accounts page.
   expense_entry_id: string | null;
+  // Set when this row is one half of a credit card payment — the debit
+  // here pairs with a 'payment' row in credit_card_transactions sharing
+  // this same id. Null for anything unrelated to a credit card.
+  credit_card_transaction_id: string | null;
   created_at: string;
 }
 
@@ -413,3 +417,78 @@ export interface BankPortfolioSummary {
   accounts: BankAccountSummary[];
   total_balance: number;
 }
+
+// ── Credit cards ─────────────────────────────────────────────────────────
+// Modeled as the mirror image of a bank account: a "spend" raises what's
+// owed (like a debit lowers a bank balance) and a "payment" lowers it
+// (like a credit raises one). statement_day / due_day are just the day-
+// of-month (1-31) the card's cycle closes and payment is due — the actual
+// dates for "this cycle" are computed client/server-side from those.
+export type CreditCardTransactionType = 'spend' | 'payment' | 'refund';
+
+export interface CreditCard {
+  id: string;
+  user_id: string;
+  name: string; // e.g. "HDFC Regalia"
+  bank_name: string | null;
+  card_network: string | null; // Visa / Mastercard / Rupay / Amex — free text
+  card_number_last4: string | null;
+  credit_limit: number;
+  statement_day: number; // 1-31, day of month the statement is generated
+  due_day: number; // 1-31, day of month payment is due (in the cycle after the statement)
+  opening_balance: number; // outstanding balance as of opening_date, before transactions logged here
+  opening_date: string;
+  // Entered manually per statement, since the exact minimum-due formula
+  // varies by issuer and offers/EMIs can change it — not auto-calculated.
+  current_statement_balance: number | null;
+  current_minimum_due: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CreditCardTransaction {
+  id: string;
+  user_id: string;
+  card_id: string;
+  date: string;
+  type: CreditCardTransactionType;
+  amount: number;
+  description: string | null;
+  category: string | null;
+  created_at: string;
+  // Set when this spend was also logged as an income/expense entry, so it
+  // shows up in Expense Analysis too — mirrors expense_entry_id on
+  // bank_transactions. Null for a spend that was only ever logged here.
+  expense_entry_id: string | null;
+  // Set when this payment was also recorded as a debit on a bank account —
+  // both rows share this id so they can be identified and deleted as a
+  // pair, same pattern as a bank-to-bank transfer_id.
+  bank_transaction_id: string | null;
+  bank_account_name: string | null; // attached client-side for display only
+}
+
+export type CreditCardLedgerEntry = CreditCardTransaction & { running_balance: number };
+
+export interface CreditCardSummary {
+  card: CreditCard;
+  balance: number; // outstanding amount owed right now
+  available_credit: number; // credit_limit - balance, floored at 0 for display
+  utilization_pct: number; // balance / credit_limit * 100, 0 if no limit set
+  total_spend: number; // all-time
+  total_payments: number; // all-time (payments + refunds combined)
+  transactions: CreditCardLedgerEntry[];
+  // This cycle's due date, computed from due_day relative to today, plus
+  // how many days away (negative if overdue) — calendar-accurate the same
+  // way the Loans page computes its debt-free countdown.
+  next_due_date: string;
+  days_until_due: number;
+  is_overdue: boolean;
+}
+
+export interface CreditCardPortfolioSummary {
+  cards: CreditCardSummary[];
+  total_balance: number;
+  total_credit_limit: number;
+  total_available_credit: number;
+}
+
