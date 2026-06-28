@@ -463,6 +463,18 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
               <div style={styles.historyList}>
                 {sortedTxns.map((t) => {
                   const deletable = canDelete(t.id);
+                  const latestNav = holding.fund.latest_nav;
+                  // Current value of this specific lump (what it would be
+                  // worth today, at the fund's latest NAV) — BUY only, since
+                  // a SELL has already been converted to cash and has no
+                  // "current value" of its own.
+                  const showCurrentValue = t.type === 'BUY' && latestNav != null && latestNav > 0;
+                  const currentValue = showCurrentValue ? Number(t.units) * latestNav : 0;
+                  const txnGainLoss = showCurrentValue ? currentValue - Number(t.amount) : 0;
+                  const txnGainLossPct =
+                    showCurrentValue && Number(t.amount) > 0
+                      ? (txnGainLoss / Number(t.amount)) * 100
+                      : 0;
                   return (
                     <div key={t.id} style={styles.historyRow}>
                       <div>
@@ -476,6 +488,20 @@ export default function TransactionModal({ holding, onClose, onSaved }: Props) {
                         {' @ '}₹{Number(t.nav).toFixed(2)}
                         {' = '}₹{Number(t.amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                       </div>
+                      {showCurrentValue && (
+                        <div style={styles.historyCurrentValue}>
+                          Now worth ₹
+                          {currentValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          {' '}
+                          <span style={txnGainLoss >= 0 ? styles.gainText : styles.lossText}>
+                            ({txnGainLoss >= 0 ? '+' : ''}
+                            {txnGainLoss.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            {' · '}
+                            {txnGainLoss >= 0 ? '+' : ''}
+                            {txnGainLossPct.toFixed(2)}%)
+                          </span>
+                        </div>
+                      )}
                       {t.notes && <div style={styles.historyNotes}>{t.notes}</div>}
                       {wasAlreadyNegative && (
                         <div style={deletable ? styles.deletableHint : styles.notDeletableHint}>
@@ -848,6 +874,20 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--ink)',
     fontFamily: 'var(--font-mono)',
     marginTop: '6px',
+  },
+  historyCurrentValue: {
+    fontSize: '12.5px',
+    color: 'var(--ink-soft)',
+    fontFamily: 'var(--font-mono)',
+    marginTop: '4px',
+  },
+  gainText: {
+    color: 'var(--ledger-green)',
+    fontWeight: 600,
+  },
+  lossText: {
+    color: 'var(--brick)',
+    fontWeight: 600,
   },
   historyNotes: {
     fontSize: '12.5px',
