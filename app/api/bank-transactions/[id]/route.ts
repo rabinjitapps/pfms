@@ -39,6 +39,15 @@ export async function PATCH(
     );
   }
 
+  // Same idea again for a row paired with a credit card payment — edit it
+  // from the Credit Cards page so both sides stay in sync.
+  if (existing.credit_card_transaction_id) {
+    return NextResponse.json(
+      { error: 'This transaction is a credit card payment — edit it from the Credit Cards page instead.' },
+      { status: 400 }
+    );
+  }
+
   const body = await req.json();
   const { date, description, category } = body;
 
@@ -81,7 +90,7 @@ export async function DELETE(
 
   const { data: existing } = await supabaseAdmin
     .from('bank_transactions')
-    .select('id, user_id, transfer_id, expense_entry_id')
+    .select('id, user_id, transfer_id, expense_entry_id, credit_card_transaction_id')
     .eq('id', id)
     .maybeSingle();
 
@@ -101,6 +110,28 @@ export async function DELETE(
       .eq('user_id', userId);
     if (entryError) {
       console.error('Failed to delete source expense entry for mirrored transaction:', entryError);
+      return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  // This row exists only because a payment was logged against a credit
+  // card — delete the paired credit_card_transactions row too, so the
+  // payment disappears from both ledgers together. No FK cascade handles
+  // this (by design — either side can be deleted first), so it's explicit.
+  if (existing.credit_card_transaction_id) {
+    const { error: cardTxnError } = await supabaseAdmin
+      .from('credit_card_transactions')
+      .delete()
+      .eq('id', existing.credit_card_transaction_id)
+      .eq('user_id', userId);
+    if (cardTxnError) {
+      console.error('Failed to delete paired credit card transaction:', cardTxnError);
+      return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 });
+    }
+    const { error } = await supabaseAdmin.from('bank_transactions').delete().eq('id', id);
+    if (error) {
+      console.error('Failed to delete bank transaction:', error);
       return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 });
     }
     return NextResponse.json({ success: true });
