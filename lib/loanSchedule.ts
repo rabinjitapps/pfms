@@ -8,6 +8,58 @@
  */
 
 import { Loan, LoanSummary, LoanPortfolioSummary, LoanEmiMonth } from '@/types';
+import { monthlyRateFromAnnual } from '@/lib/loanMath';
+
+/**
+ * Reducing-balance amortization: walk the loan's full schedule month by
+ * month, splitting each installment into its principal and interest
+ * components, so we can report "of the ₹X still outstanding, ₹Y is
+ * principal and ₹Z is interest" — rather than treating the remaining
+ * amount as undifferentiated rupees.
+ *
+ * Mirrors the same phase rules as buildLoanSummary (flexi's interest-only
+ * months don't reduce the balance at all; monthly/standard amortize for
+ * the full tenure) using loan.interest_rate, which is always stored as
+ * the annual equivalent regardless of loan_type.
+ *
+ * Returns one entry per scheduled month, in order, so callers can sum
+ * whichever subset they need (e.g. only the unpaid ones).
+ */
+function buildAmortizationSchedule(
+  loan: Loan
+): { principal_component: number; interest_component: number }[] {
+  const monthlyRate = monthlyRateFromAnnual(loan.interest_rate);
+  const interestOnlyMonths = loan.interest_only_months ?? 0;
+  let balance = loan.principal;
+  const out: { principal_component: number; interest_component: number }[] = [];
+
+  for (let i = 0; i < loan.total_months; i++) {
+    const interestComponent = Math.round(balance * monthlyRate * 100) / 100;
+
+    if (i < interestOnlyMonths) {
+      // Interest-only phase: the whole installment is interest, balance
+      // (principal) is untouched.
+      out.push({ principal_component: 0, interest_component: interestComponent });
+      continue;
+    }
+
+    const isLastMonth = i === loan.total_months - 1;
+    // On the final installment, retire whatever balance is left exactly —
+    // avoids a stray paisa of drift from rounding accumulating over the
+    // life of the loan.
+    const principalComponent = isLastMonth
+      ? balance
+      : Math.max(0, Math.min(balance, loan.emi_amount - interestComponent));
+
+    out.push({
+      principal_component: Math.round(principalComponent * 100) / 100,
+      interest_component: interestComponent,
+    });
+    balance = Math.round((balance - principalComponent) * 100) / 100;
+  }
+
+  return out;
+}
 
 export function buildLoanSummary(loan: Loan): LoanSummary {
   const today = new Date();
@@ -68,6 +120,26 @@ export function buildLoanSummary(loan: Loan): LoanSummary {
   const total_payable = schedule.reduce((sum, s) => sum + s.emi_amount, 0);
   const total_interest = Math.max(0, total_payable - loan.principal);
 
+  // Split of what's still outstanding into principal vs interest. The flat
+  // "remaining EMIs" total (total_amount_pending) mixes both together, so we
+  // walk a proper reducing-balance amortization in parallel and sum only the
+  // unpaid months' components — this tells a person how much of what's left
+  // is money they borrowed vs money the lender still charges them on top.
+  const amortization = buildAmortizationSchedule(loan);
+  let outstanding_principal = 0;
+  let outstanding_interest = 0;
+  schedule.forEach((s, i) => {
+    if (s.is_paid) return;
+    const a = amortization[i];
+    if (!a) return;
+    outstanding_principal += a.principal_component;
+    outstanding_interest += a.interest_component;
+  });
+  outstanding_principal = Math.round(outstanding_principal * 100) / 100;
+  outstanding_interest = Math.round(outstanding_interest * 100) / 100;
+
+  const is_closed = pending_count <= 0;
+
   return {
     loan,
     paid_count,
@@ -83,6 +155,9 @@ export function buildLoanSummary(loan: Loan): LoanSummary {
     in_interest_only_phase,
     interest_only_months_remaining,
     total_interest,
+    outstanding_principal,
+    outstanding_interest,
+    is_closed,
   };
 }
 
@@ -91,18 +166,26 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
     .map(buildLoanSummary)
     .sort((a, b) => a.pending_count - b.pending_count);
 
-  const totalMonthlyEmi = summaries.reduce((s, ls) => {
-    if (ls.pending_count <= 0) return s;
+  // Closed loans (fully paid off) are tracked separately from active ones —
+  // they're excluded from every "currently owed" figure below (EMI, totals,
+  // upcoming months, debt-free date) since they no longer contribute debt,
+  // but their history is still shown to the person in its own section.
+  const activeSummaries = summaries.filter((ls) => !ls.is_closed);
+  const closedSummaries = summaries.filter((ls) => ls.is_closed);
+
+  const totalMonthlyEmi = activeSummaries.reduce((s, ls) => {
     const nextDue = ls.emi_schedule.find((m) => !m.is_paid);
     return s + (nextDue ? nextDue.emi_amount : 0);
   }, 0);
-  const totalOutstanding = summaries.reduce((s, ls) => s + ls.total_amount_pending, 0);
-  const totalInterest = summaries.reduce((s, ls) => s + ls.total_interest, 0);
+  const totalOutstanding = activeSummaries.reduce((s, ls) => s + ls.total_amount_pending, 0);
+  const totalInterest = activeSummaries.reduce((s, ls) => s + ls.total_interest, 0);
+  const totalOutstandingPrincipal = activeSummaries.reduce((s, ls) => s + ls.outstanding_principal, 0);
+  const totalOutstandingInterest = activeSummaries.reduce((s, ls) => s + ls.outstanding_interest, 0);
 
   const today = new Date();
   const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
   const monthTotals = new Map<string, number>();
-  for (const ls of summaries) {
+  for (const ls of activeSummaries) {
     for (const m of ls.emi_schedule) {
       if (m.is_paid) continue;
       if (m.month <= currentMonthStr) continue;
@@ -137,9 +220,12 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
       : new Date().toISOString();
 
   return {
-    loans: summaries,
+    loans: activeSummaries,
+    closed_loans: closedSummaries,
     total_monthly_emi: totalMonthlyEmi,
     total_outstanding: totalOutstanding,
+    total_outstanding_principal: totalOutstandingPrincipal,
+    total_outstanding_interest: totalOutstandingInterest,
     total_interest: totalInterest,
     upcoming_months: upcomingMonths,
     percent_complete: percentComplete,
