@@ -340,12 +340,18 @@ export interface LoanSummary {
   in_interest_only_phase: boolean; // true if the current/next-due month is still interest-only
   interest_only_months_remaining: number;
   total_interest: number; // total interest over the full loan tenure (running + completed)
+  outstanding_principal: number; // of total_amount_pending, the portion that is still-unpaid principal
+  outstanding_interest: number; // of total_amount_pending, the portion that is still-unpaid interest
+  is_closed: boolean; // true once every EMI is paid off (pending_count === 0)
 }
 
 export interface LoanPortfolioSummary {
-  loans: LoanSummary[];
+  loans: LoanSummary[]; // active (not yet fully paid off) loans only
+  closed_loans: LoanSummary[]; // fully paid-off loans, shown separately
   total_monthly_emi: number;
   total_outstanding: number;
+  total_outstanding_principal: number; // of total_outstanding, the principal portion (across active loans)
+  total_outstanding_interest: number; // of total_outstanding, the interest portion (across active loans)
   total_interest: number; // sum of total_interest across all loans (running + completed)
   upcoming_months: { month: string; label: string; amount: number }[]; // chronological, strictly after the current month
   percent_complete: number; // combined EMI count paid / total EMI count across every loan
