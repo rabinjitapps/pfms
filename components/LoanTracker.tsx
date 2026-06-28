@@ -188,11 +188,12 @@ function LoanCard({
   const debtFreeDateStr = debtFreeDate.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
 
   return (
-    <div className={styles.loanCard}>
+    <div className={summary.is_closed ? `${styles.loanCard} ${styles.loanCardClosed}` : styles.loanCard}>
       {/* Header */}
       <div className={styles.loanCardHeader}>
         <div className={styles.loanCardTitle}>
           <h3 className={styles.loanName}>{loan.name}</h3>
+          {summary.is_closed && <span className={styles.closedBadge}>CLOSED</span>}
           {loan.loan_type === 'flexi' && <span className={styles.flexiBadge}>FLEXI</span>}
           {loan.loan_type === 'monthly' && <span className={styles.flexiBadge}>MONTHLY RATE</span>}
           <span className={styles.loanRate}>{loan.interest_rate.toFixed(2)}% p.a.</span>
@@ -303,6 +304,13 @@ function LoanCard({
             {fmtCurrency(summary.total_amount_pending)} remaining
           </span>
         </div>
+        {summary.total_amount_pending > 0 && (
+          <div className={styles.outstandingBreakdown}>
+            {fmtCurrency(summary.outstanding_principal)} principal
+            {' + '}
+            {fmtCurrency(summary.outstanding_interest)} interest
+          </div>
+        )}
       </div>
 
       {/* Debt-free progress bar */}
@@ -463,6 +471,11 @@ export default function LoanTracker({ displayName }: Props) {
                     <span className={`${styles.summaryBig} ${styles.summaryNeg}`}>
                       {fmtCurrency(portfolio.total_outstanding)}
                     </span>
+                    <span className={styles.summaryBreakdown}>
+                      {fmtCurrency(portfolio.total_outstanding_principal)} principal
+                      {' + '}
+                      {fmtCurrency(portfolio.total_outstanding_interest)} interest
+                    </span>
                   </div>
                   <div className={styles.summaryItem}>
                     <span className={styles.summaryLabel}>Total Interest</span>
@@ -472,7 +485,7 @@ export default function LoanTracker({ displayName }: Props) {
                   </div>
                   <div className={styles.summaryItem}>
                     <span className={styles.summaryLabel}>Active Loans</span>
-                    <span className={styles.summaryBig}>{loans.length}</span>
+                    <span className={styles.summaryBig}>{portfolio.loans.length}</span>
                   </div>
                 </div>
               </div>
@@ -559,18 +572,45 @@ export default function LoanTracker({ displayName }: Props) {
               </p>
             </div>
           ) : (
-            <div className={styles.loanList}>
-              {portfolio.loans.map((summary) => (
-                <LoanCard
-                  key={summary.loan.id}
-                  summary={summary}
-                  onDelete={handleDelete}
-                  onEdit={(loan) => { setEditingLoan(loan); setShowModal(true); }}
-                  onTogglePayment={handleTogglePayment}
-                  togglingKey={togglingKey}
-                />
-              ))}
-            </div>
+            <>
+              {portfolio.loans.length > 0 && (
+                <div className={styles.loanList}>
+                  {portfolio.loans.map((summary) => (
+                    <LoanCard
+                      key={summary.loan.id}
+                      summary={summary}
+                      onDelete={handleDelete}
+                      onEdit={(loan) => { setEditingLoan(loan); setShowModal(true); }}
+                      onTogglePayment={handleTogglePayment}
+                      togglingKey={togglingKey}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {portfolio.closed_loans.length > 0 && (
+                <div className={styles.closedSection}>
+                  <div className={styles.closedSectionHeader}>
+                    <span className={styles.closedSectionTitle}>Closed Loans</span>
+                    <span className={styles.closedSectionCount}>
+                      {portfolio.closed_loans.length} paid off
+                    </span>
+                  </div>
+                  <div className={styles.loanList}>
+                    {portfolio.closed_loans.map((summary) => (
+                      <LoanCard
+                        key={summary.loan.id}
+                        summary={summary}
+                        onDelete={handleDelete}
+                        onEdit={(loan) => { setEditingLoan(loan); setShowModal(true); }}
+                        onTogglePayment={handleTogglePayment}
+                        togglingKey={togglingKey}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </main>
 
