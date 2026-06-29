@@ -294,24 +294,24 @@
 .holdingsList {
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
 .ledgerHeader {
   display: grid;
   grid-template-columns: minmax(160px, 1.7fr) 112px 130px 158px 84px;
   column-gap: 18px;
-  padding: 0 20px 10px;
-  border-bottom: 1.5px solid var(--ink);
-  margin-bottom: 4px;
+  padding: 0 22px 12px;
+  margin-bottom: 2px;
 }
 
 .ledgerHeaderCell {
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--brass);
+  color: var(--ink);
   text-align: right;
 }
 
@@ -327,18 +327,23 @@
   align-items: center;
   width: 100%;
   text-align: left;
-  padding: 17px 20px;
+  padding: 18px 22px;
   background: var(--paper-raised);
-  border-bottom: 1px solid var(--hairline);
-  transition: background 0.15s ease;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(28, 27, 25, 0.04);
+  transition: background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 
 .holdingsList .holdingRow:first-of-type {
-  border-top: none;
+  border-top: 1px solid var(--hairline);
 }
 
 .holdingRow:hover {
-  background: var(--brass-soft);
+  background: var(--paper-raised);
+  border-color: var(--brass);
+  box-shadow: 0 4px 14px rgba(28, 27, 25, 0.08);
+  transform: translateY(-1px);
 }
 
 .holdingMain {
@@ -391,16 +396,17 @@
 }
 
 .figureInvested {
-  font-size: 14px;
-  color: var(--ink-soft);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
   margin: 0;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .holdingValue {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--ink);
   margin: 0;
   font-family: var(--font-mono);
@@ -408,7 +414,8 @@
 }
 
 .holdingGainPositive {
-  font-size: 13.5px;
+  font-size: 14.5px;
+  font-weight: 700;
   color: var(--ledger-green);
   margin: 0;
   font-family: var(--font-mono);
@@ -416,7 +423,8 @@
 }
 
 .holdingGainNegative {
-  font-size: 13.5px;
+  font-size: 14.5px;
+  font-weight: 700;
   color: var(--brick);
   margin: 0;
   font-family: var(--font-mono);
@@ -426,11 +434,13 @@
 .gainPctSmall {
   display: block;
   font-size: 11px;
+  font-weight: 500;
   opacity: 0.85;
 }
 
 .holdingXirrValue {
-  font-size: 13.5px;
+  font-size: 14.5px;
+  font-weight: 700;
   color: var(--ink-faint);
   margin: 0;
   font-family: var(--font-mono);
@@ -438,18 +448,18 @@
 }
 
 .holdingXirrValuePositive {
-  font-size: 13.5px;
+  font-size: 14.5px;
   color: var(--ledger-green);
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .holdingXirrValueNegative {
-  font-size: 13.5px;
+  font-size: 14.5px;
   color: var(--brick);
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -457,15 +467,15 @@
 
 .removeBtn {
   position: absolute;
-  top: 10px;
-  right: 14px;
+  top: 12px;
+  right: 16px;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-faint);
-  opacity: 0.55;
+  opacity: 0.5;
   padding: 4px;
   z-index: 1;
   transition: color 0.15s ease, opacity 0.15s ease;
@@ -564,8 +574,7 @@
     grid-template-columns: 1fr;
     row-gap: 10px;
     padding: 16px 16px 14px;
-    border-radius: 4px;
-    margin-bottom: 8px;
+    border-radius: 10px;
     border: 1px solid var(--hairline);
   }
 
