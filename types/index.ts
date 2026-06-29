@@ -323,6 +323,8 @@ export interface LoanEmiMonth {
   is_paid: boolean;        // auto (date-based) OR manually marked
   manually_paid: boolean;  // explicitly toggled by user
   is_future: boolean;
+  principal_component: number; // this month's share of the EMI that goes toward principal
+  interest_component: number;  // this month's share of the EMI that is interest
 }
 
 export interface LoanSummary {
