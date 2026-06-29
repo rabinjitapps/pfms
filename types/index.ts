@@ -237,6 +237,15 @@ export interface ExpenseAnalysis {
   grandTotal: number;
 }
 
+// Individual entries making up one head's total in the breakdown list —
+// fetched on demand when a person clicks a head to see what it's made of.
+export interface ExpenseHeadBreakdown {
+  categoryId: string;
+  categoryName: string;
+  entries: ExpenseEntry[];
+  total: number;
+}
+
 // ----------------------------------------------------------------------
 // Bulk import (Excel upload)
 // ----------------------------------------------------------------------
