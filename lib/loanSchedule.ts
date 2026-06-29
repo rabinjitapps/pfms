@@ -70,6 +70,10 @@ export function buildLoanSummary(loan: Loan): LoanSummary {
 
   const startDate = new Date(loan.emi_start_date);
   const schedule = [];
+  // Computed once up front so each month's cell can show its own
+  // principal/interest split (interest-only months are all-interest;
+  // everything else follows the reducing-balance amortization).
+  const amortizationByMonth = buildAmortizationSchedule(loan);
 
   for (let i = 0; i < loan.total_months; i++) {
     const d = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
@@ -81,6 +85,7 @@ export function buildLoanSummary(loan: Loan): LoanSummary {
     const is_paid = auto_paid || manually_paid;
     const phase: LoanEmiMonth['phase'] = i < interestOnlyMonths ? 'interest_only' : 'emi';
     const emi_amount = phase === 'interest_only' ? loan.interest_only_payment : loan.emi_amount;
+    const amort = amortizationByMonth[i];
 
     schedule.push({
       month: monthStr,
@@ -89,6 +94,8 @@ export function buildLoanSummary(loan: Loan): LoanSummary {
       is_paid,
       manually_paid,
       is_future,
+      principal_component: amort?.principal_component ?? 0,
+      interest_component: amort?.interest_component ?? 0,
     });
   }
 
@@ -122,18 +129,15 @@ export function buildLoanSummary(loan: Loan): LoanSummary {
 
   // Split of what's still outstanding into principal vs interest. The flat
   // "remaining EMIs" total (total_amount_pending) mixes both together, so we
-  // walk a proper reducing-balance amortization in parallel and sum only the
-  // unpaid months' components — this tells a person how much of what's left
-  // is money they borrowed vs money the lender still charges them on top.
-  const amortization = buildAmortizationSchedule(loan);
+  // sum each unpaid month's already-computed principal/interest components —
+  // this tells a person how much of what's left is money they borrowed vs
+  // money the lender still charges them on top.
   let outstanding_principal = 0;
   let outstanding_interest = 0;
-  schedule.forEach((s, i) => {
+  schedule.forEach((s) => {
     if (s.is_paid) return;
-    const a = amortization[i];
-    if (!a) return;
-    outstanding_principal += a.principal_component;
-    outstanding_interest += a.interest_component;
+    outstanding_principal += s.principal_component;
+    outstanding_interest += s.interest_component;
   });
   outstanding_principal = Math.round(outstanding_principal * 100) / 100;
   outstanding_interest = Math.round(outstanding_interest * 100) / 100;
