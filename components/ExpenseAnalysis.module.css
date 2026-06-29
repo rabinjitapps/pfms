@@ -221,10 +221,21 @@
 .breakdownRow {
   display: flex;
   align-items: center;
+  width: 100%;
   gap: 12px;
   padding: 11px 16px;
   background: var(--paper-raised);
+  border: none;
   border-bottom: 1px solid var(--hairline);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.breakdownRow:hover {
+  background: var(--brass-soft);
 }
 
 .breakdownRow:last-child {

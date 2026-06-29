@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ExpenseAnalysis as ExpenseAnalysisData, AnalysisPeriodType, ExpenseDirection } from '@/types';
+import { ExpenseAnalysis as ExpenseAnalysisData, AnalysisPeriodType, ExpenseDirection, ExpenseHeadTotal } from '@/types';
 import AppShell from './AppShell';
 import HeadBarChart from './HeadBarChart';
+import ExpenseHeadBreakdownModal from './ExpenseHeadBreakdownModal';
 import styles from './ExpenseAnalysis.module.css';
 
 function formatINR(n: number): string {
@@ -38,6 +39,7 @@ export default function ExpenseAnalysis({ displayName }: { displayName: string }
   const [data, setData] = useState<ExpenseAnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedHead, setSelectedHead] = useState<ExpenseHeadTotal | null>(null);
 
   const period = periodType === 'year' ? year : month;
 
@@ -62,6 +64,10 @@ export default function ExpenseAnalysis({ displayName }: { displayName: string }
 
   useEffect(() => {
     load(periodType, period, direction);
+    // Close any open head breakdown when the period/direction changes —
+    // otherwise it would keep showing entries for whatever was selected
+    // under the previous period.
+    setSelectedHead(null);
   }, [load, periodType, period, direction]);
 
   const availableYears = data?.availableYears ?? [];
@@ -191,7 +197,12 @@ export default function ExpenseAnalysis({ displayName }: { displayName: string }
                 {data.totals.map((t) => {
                   const pct = data.grandTotal > 0 ? (t.total / data.grandTotal) * 100 : 0;
                   return (
-                    <div key={t.categoryId} className={styles.breakdownRow}>
+                    <button
+                      key={t.categoryId}
+                      type="button"
+                      className={styles.breakdownRow}
+                      onClick={() => setSelectedHead(t)}
+                    >
                       <span className={styles.breakdownName}>{t.categoryName}</span>
                       <span className={styles.breakdownPct}>{pct.toFixed(1)}%</span>
                       <span
@@ -201,13 +212,25 @@ export default function ExpenseAnalysis({ displayName }: { displayName: string }
                       >
                         ₹{formatINR(t.total)}
                       </span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
             </>
           ) : null}
         </main>
+
+        {selectedHead && (
+          <ExpenseHeadBreakdownModal
+            categoryId={selectedHead.categoryId}
+            categoryName={selectedHead.categoryName}
+            periodType={periodType}
+            period={period}
+            direction={direction}
+            periodLabel={periodType === 'year' ? year : formatMonthLabel(month)}
+            onClose={() => setSelectedHead(null)}
+          />
+        )}
       </div>
     </AppShell>
   );
