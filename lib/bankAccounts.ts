@@ -51,6 +51,9 @@ export function buildBankPortfolioSummary(
   transactionsByAccount: Record<string, BankTransaction[]>
 ): BankPortfolioSummary {
   const summaries = accounts.map((acc) => buildAccountSummary(acc, transactionsByAccount[acc.id] ?? []));
+  // Highest-balance account first — lets a person see at a glance where
+  // most of their money currently sits, rather than in arbitrary/creation order.
+  summaries.sort((a, b) => b.balance - a.balance);
   const totalBalance = summaries.reduce((sum, s) => sum + s.balance, 0);
   return { accounts: summaries, total_balance: round2(totalBalance) };
 }
