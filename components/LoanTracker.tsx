@@ -146,6 +146,15 @@ function MonthlyScheduleTable({
                       )}
                     </span>
                     <span className={styles.scheduleCellAmount}>{fmtCurrency(m.emi_amount)}</span>
+                    <span className={styles.scheduleCellBreakdown}>
+                      {m.phase === 'interest_only' ? (
+                        <>all interest</>
+                      ) : (
+                        <>
+                          {fmtCurrency(m.principal_component)} P + {fmtCurrency(m.interest_component)} I
+                        </>
+                      )}
+                    </span>
                     <span className={styles.scheduleCellStatus}>
                       {m.manually_paid
                         ? '✓ paid (manual)'

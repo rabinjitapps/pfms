@@ -263,7 +263,7 @@ export default function StockTracker({ displayName }: { displayName: string }) {
                 >
                   <div className={styles.holdingMain}>
                     <p className={styles.holdingName}>
-                      {h.stock.name} <span className={styles.holdingDate}>{h.stock.symbol}</span>
+                      {h.stock.name} <span className={styles.holdingSymbol}>{h.stock.symbol}</span>
                     </p>
                     {h.totalQuantity < -0.0001 && (
                       <p className={styles.holdingWarning}>
@@ -272,16 +272,19 @@ export default function StockTracker({ displayName }: { displayName: string }) {
                       </p>
                     )}
                     <p className={styles.holdingMeta}>
-                      {h.totalQuantity.toLocaleString('en-IN', { maximumFractionDigits: 4 })} shares
-                      {' · Avg ₹'}{h.avgPrice.toFixed(2)}
+                      <span className={styles.holdingMetaEmphasis}>
+                        {h.totalQuantity.toLocaleString('en-IN', { maximumFractionDigits: 4 })} shares
+                        {' · Avg ₹'}{h.avgPrice.toFixed(2)}
+                      </span>
                       {' · '}₹{(h.stock.latest_price ?? 0).toFixed(2)}
                       {h.stock.latest_price_date && (
-                        <span className={styles.holdingDate}> as of {h.stock.latest_price_date}</span>
+                        <span className={styles.holdingMetaMuted}> as of {h.stock.latest_price_date}</span>
                       )}
                     </p>
                     {age && (
                       <p className={styles.holdingMetaSecondary}>
-                        Held {age.label} <span className={styles.holdingDate}>({age.days} days)</span>
+                        Held {age.label}{' '}
+                        <span className={styles.holdingMetaEmphasis}>({age.days} days)</span>
                       </p>
                     )}
                   </div>
