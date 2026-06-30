@@ -449,6 +449,14 @@ export default function LoanTracker({ displayName }: Props) {
   };
 
   const portfolio = buildPortfolioSummary(loans);
+  const selectedMonth = portfolio.upcoming_months.length > 0 ? portfolio.upcoming_months[monthIndex] : null;
+  const displayedOutstanding = selectedMonth ? selectedMonth.outstanding_after : portfolio.total_outstanding;
+  const displayedOutstandingPrincipal = selectedMonth
+    ? selectedMonth.outstanding_after_principal
+    : portfolio.total_outstanding_principal;
+  const displayedOutstandingInterest = selectedMonth
+    ? selectedMonth.outstanding_after_interest
+    : portfolio.total_outstanding_interest;
 
   useEffect(() => {
     setMonthIndex((i) => Math.min(i, Math.max(0, portfolio.upcoming_months.length - 1)));
@@ -478,13 +486,16 @@ export default function LoanTracker({ displayName }: Props) {
                   <div className={styles.summaryItem}>
                     <span className={styles.summaryLabel}>Total Outstanding</span>
                     <span className={`${styles.summaryBig} ${styles.summaryNeg}`}>
-                      {fmtCurrency(portfolio.total_outstanding)}
+                      {fmtCurrency(displayedOutstanding)}
                     </span>
                     <span className={styles.summaryBreakdown}>
-                      {fmtCurrency(portfolio.total_outstanding_principal)} principal
+                      {fmtCurrency(displayedOutstandingPrincipal)} principal
                       {' + '}
-                      {fmtCurrency(portfolio.total_outstanding_interest)} interest
+                      {fmtCurrency(displayedOutstandingInterest)} interest
                     </span>
+                    {selectedMonth && (
+                      <span className={styles.summaryBreakdown}>after {selectedMonth.label} EMI</span>
+                    )}
                   </div>
                   <div className={styles.summaryItem}>
                     <span className={styles.summaryLabel}>Total Interest</span>
