@@ -198,11 +198,30 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
   }
   const upcomingMonths: LoanPortfolioSummary['upcoming_months'] = Array.from(monthTotals.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, amount]) => ({
-      month,
-      label: new Date(month + '-01').toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
-      amount,
-    }));
+    .map(([month, amount]) => {
+      // Projected balance once this month's EMI is paid: everything still
+      // unpaid in months strictly after this one, across every active loan,
+      // split the same way total_outstanding is (principal vs interest).
+      let outstandingAfter = 0;
+      let outstandingAfterPrincipal = 0;
+      let outstandingAfterInterest = 0;
+      for (const ls of activeSummaries) {
+        for (const m of ls.emi_schedule) {
+          if (m.is_paid || m.month <= month) continue;
+          outstandingAfter += m.emi_amount;
+          outstandingAfterPrincipal += m.principal_component;
+          outstandingAfterInterest += m.interest_component;
+        }
+      }
+      return {
+        month,
+        label: new Date(month + '-01').toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+        amount,
+        outstanding_after: Math.round(outstandingAfter * 100) / 100,
+        outstanding_after_principal: Math.round(outstandingAfterPrincipal * 100) / 100,
+        outstanding_after_interest: Math.round(outstandingAfterInterest * 100) / 100,
+      };
+    });
 
   // Portfolio-wide debt-free countdown: the whole portfolio is only debt
   // free once its slowest-finishing loan is paid off, so the date is the
