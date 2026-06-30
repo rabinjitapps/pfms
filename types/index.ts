@@ -364,7 +364,14 @@ export interface LoanPortfolioSummary {
   total_outstanding_principal: number; // of total_outstanding, the principal portion (across active loans)
   total_outstanding_interest: number; // of total_outstanding, the interest portion (across active loans)
   total_interest: number; // sum of total_interest across all loans (running + completed)
-  upcoming_months: { month: string; label: string; amount: number }[]; // chronological, strictly after the current month
+  upcoming_months: {
+    month: string;
+    label: string;
+    amount: number;
+    outstanding_after: number; // portfolio total_outstanding projected forward, as it will stand once this month's EMI is paid
+    outstanding_after_principal: number; // principal portion of outstanding_after
+    outstanding_after_interest: number; // interest portion of outstanding_after
+  }[]; // chronological, strictly after the current month
   percent_complete: number; // combined EMI count paid / total EMI count across every loan
   debt_free_date: string; // ISO date of the last EMI across the whole portfolio (the loan that finishes last)
   total_amount_paid: number; // sum of every loan's total_amount_paid, for the debt-free countdown's ₹ figures
@@ -508,4 +515,3 @@ export interface CreditCardPortfolioSummary {
   total_credit_limit: number;
   total_available_credit: number;
 }
-
