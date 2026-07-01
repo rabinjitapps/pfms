@@ -525,11 +525,11 @@
   min-width: 0;
 }
 
-/* Second line: bank icon + bank name + separator dot + note */
+/* Second line: bank + note stacked vertically */
 .entryMeta {
   display: flex;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  gap: 2px;
   padding-left: 2px;
   min-width: 0;
 }
@@ -546,15 +546,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 1;
   min-width: 0;
 }
 
 .entryMetaDot {
-  font-size: 11px;
-  color: var(--hairline);
-  flex-shrink: 0;
-  line-height: 1;
+  display: none;
 }
 
 .entryNote {
@@ -565,7 +561,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-  flex-shrink: 2;
 }
 
 /* Right column: amount above, actions below */
