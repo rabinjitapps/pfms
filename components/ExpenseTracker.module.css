@@ -546,7 +546,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 160px;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .entryMetaDot {
@@ -564,6 +565,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  flex-shrink: 2;
 }
 
 /* Right column: amount above, actions below */
@@ -727,10 +729,6 @@
     padding: 13px 14px;
     gap: 10px;
     align-items: flex-start;
-  }
-
-  .entryBank {
-    max-width: 120px;
   }
 
   .deleteBtn,
