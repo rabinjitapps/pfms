@@ -400,42 +400,68 @@ export default function ExpenseTracker({ displayName }: { displayName: string })
                     </div>
                     {group.entries.map((entry) => (
                       <div key={entry.id} className={styles.entryRow}>
-                        <div className={styles.entryMain}>
+                        {/* Left: tag + category on top row, bank + note on second row */}
+                        <div className={styles.entryLeft}>
+                          <div className={styles.entryTopRow}>
+                            <span
+                              className={
+                                entry.direction === 'INFLOW' ? styles.tagInflow : styles.tagOutflow
+                              }
+                            >
+                              {entry.direction === 'INFLOW' ? 'IN' : 'OUT'}
+                            </span>
+                            <span className={styles.entryHead}>{entry.category.name}</span>
+                          </div>
+                          {(entry.account?.name || entry.notes) && (
+                            <div className={styles.entryMeta}>
+                              {entry.account?.name && (
+                                <span className={styles.entryBank}>
+                                  <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                    <rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/>
+                                    <rect x="3" y="9" width="2" height="5" rx="0.5" fill="currentColor"/>
+                                    <rect x="7" y="9" width="2" height="5" rx="0.5" fill="currentColor"/>
+                                    <rect x="11" y="9" width="2" height="5" rx="0.5" fill="currentColor"/>
+                                    <path d="M8 1L15 7H1L8 1Z" fill="currentColor"/>
+                                    <rect x="1" y="14" width="14" height="1.5" rx="0.5" fill="currentColor"/>
+                                  </svg>
+                                  {entry.account.name}
+                                </span>
+                              )}
+                              {entry.account?.name && entry.notes && (
+                                <span className={styles.entryMetaDot} aria-hidden="true">·</span>
+                              )}
+                              {entry.notes && (
+                                <span className={styles.entryNote}>{entry.notes}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Right: amount + edit/delete */}
+                        <div className={styles.entryRight}>
                           <span
                             className={
-                              entry.direction === 'INFLOW' ? styles.tagInflow : styles.tagOutflow
+                              entry.direction === 'INFLOW' ? styles.entryAmountIn : styles.entryAmountOut
                             }
                           >
-                            {entry.direction === 'INFLOW' ? 'In' : 'Out'}
+                            {entry.direction === 'INFLOW' ? '+' : '−'}₹{formatINR(Number(entry.amount))}
                           </span>
-                          <span className={styles.entryHead}>{entry.category.name}</span>
-                          {entry.account?.name && (
-                            <span className={styles.entryNotes}>via {entry.account.name}</span>
-                          )}
-                          {entry.notes && <span className={styles.entryNotes}>{entry.notes}</span>}
-                        </div>
-                        <span
-                          className={
-                            entry.direction === 'INFLOW' ? styles.entryAmountIn : styles.entryAmountOut
-                          }
-                        >
-                          {entry.direction === 'INFLOW' ? '+' : '−'}₹{formatINR(Number(entry.amount))}
-                        </span>
-                        <div className={styles.entryActions}>
-                          <button
-                            className={styles.editBtn}
-                            onClick={() => handleEditEntry(entry)}
-                            aria-label="Edit entry"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className={styles.deleteBtn}
-                            onClick={() => handleDeleteEntry(entry.id)}
-                            aria-label="Delete entry"
-                          >
-                            Delete
-                          </button>
+                          <div className={styles.entryActions}>
+                            <button
+                              className={styles.editBtn}
+                              onClick={() => handleEditEntry(entry)}
+                              aria-label="Edit entry"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className={styles.deleteBtn}
+                              onClick={() => handleDeleteEntry(entry.id)}
+                              aria-label="Delete entry"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

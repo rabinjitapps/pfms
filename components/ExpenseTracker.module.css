@@ -481,13 +481,16 @@
   font-weight: 700;
 }
 
+/* ----------------------------------------------------------------
+   Entry row — two-column card: left (category + meta), right (amount + actions)
+   ---------------------------------------------------------------- */
 .entryRow {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 13px 18px;
+  gap: 12px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--hairline);
   transition: background 0.15s ease;
 }
@@ -505,24 +508,84 @@
   opacity: 1;
 }
 
-.entryMain {
+/* Left column: grows to fill available space */
+.entryLeft {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  flex-direction: column;
+  gap: 5px;
   min-width: 0;
   flex: 1;
+}
+
+/* Top line: badge + category name */
+.entryTopRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+/* Second line: bank icon + bank name + separator dot + note */
+.entryMeta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 2px;
+  min-width: 0;
+}
+
+.entryBank {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.entryMetaDot {
+  font-size: 11px;
+  color: var(--hairline);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.entryNote {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Right column: amount above, actions below */
+.entryRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .tagInflow,
 .tagOutflow {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 2px 7px;
   border-radius: 3px;
+  line-height: 1.5;
 }
 
 .tagInflow {
@@ -542,45 +605,34 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.entryNotes {
-  font-size: 12.5px;
-  color: var(--ink-faint);
-  font-style: italic;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   min-width: 0;
 }
 
 .entryAmountIn {
-  flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: 14.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ledger-green);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .entryAmountOut {
-  flex-shrink: 0;
   font-family: var(--font-mono);
   font-size: 14.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--brick);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .entryActions {
   display: flex;
   align-items: center;
   gap: 2px;
-  flex-shrink: 0;
 }
 
 .editBtn {
-  flex-shrink: 0;
   background: none;
   border: none;
   font-family: var(--font-mono);
@@ -590,7 +642,8 @@
   text-transform: uppercase;
   color: var(--ink-faint);
   opacity: 0;
-  padding: 4px;
+  padding: 3px 5px;
+  cursor: pointer;
   transition: color 0.15s ease, opacity 0.15s ease;
 }
 
@@ -599,7 +652,6 @@
 }
 
 .deleteBtn {
-  flex-shrink: 0;
   background: none;
   border: none;
   font-family: var(--font-mono);
@@ -609,7 +661,8 @@
   text-transform: uppercase;
   color: var(--ink-faint);
   opacity: 0;
-  padding: 4px;
+  padding: 3px 5px;
+  cursor: pointer;
   transition: color 0.15s ease, opacity 0.15s ease;
 }
 
@@ -671,12 +724,13 @@
   }
 
   .entryRow {
-    flex-wrap: wrap;
-    padding: 12px 14px;
+    padding: 13px 14px;
+    gap: 10px;
+    align-items: flex-start;
   }
 
-  .entryMain {
-    flex-basis: 100%;
+  .entryBank {
+    max-width: 120px;
   }
 
   .deleteBtn,
