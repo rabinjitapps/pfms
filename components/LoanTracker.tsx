@@ -371,7 +371,7 @@ export default function LoanTracker({ displayName }: Props) {
   const [showModal, setShowModal] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
-  const [monthIndex, setMonthIndex] = useState(0);
+  const [monthIndex, setMonthIndex] = useState(-1);
 
   const fetchLoans = useCallback(async () => {
     try {
@@ -449,7 +449,11 @@ export default function LoanTracker({ displayName }: Props) {
   };
 
   const portfolio = buildPortfolioSummary(loans);
-  const selectedMonth = portfolio.upcoming_months.length > 0 ? portfolio.upcoming_months[monthIndex] : null;
+  // monthIndex -1 = current month (actual today's outstanding)
+  // monthIndex >= 0 = projected outstanding after that future month's EMI
+  const selectedMonth = monthIndex >= 0 && portfolio.upcoming_months.length > 0
+    ? portfolio.upcoming_months[monthIndex]
+    : null;
   const displayedOutstanding = selectedMonth ? selectedMonth.outstanding_after : portfolio.total_outstanding;
   const displayedOutstandingPrincipal = selectedMonth
     ? selectedMonth.outstanding_after_principal
@@ -459,7 +463,7 @@ export default function LoanTracker({ displayName }: Props) {
     : portfolio.total_outstanding_interest;
 
   useEffect(() => {
-    setMonthIndex((i) => Math.min(i, Math.max(0, portfolio.upcoming_months.length - 1)));
+    setMonthIndex((i) => Math.min(i, Math.max(-1, portfolio.upcoming_months.length - 1)));
   }, [portfolio.upcoming_months.length]);
 
   return (
@@ -495,6 +499,9 @@ export default function LoanTracker({ displayName }: Props) {
                     </span>
                     {selectedMonth && (
                       <span className={styles.summaryBreakdown}>after {selectedMonth.label} EMI</span>
+                    )}
+                    {!selectedMonth && (
+                      <span className={styles.summaryBreakdown}>as of today · {portfolio.current_month.label}</span>
                     )}
                   </div>
                   <div className={styles.summaryItem}>
@@ -541,18 +548,22 @@ export default function LoanTracker({ displayName }: Props) {
                   <button
                     type="button"
                     className={styles.nextMonthArrow}
-                    onClick={() => setMonthIndex((i) => Math.max(0, i - 1))}
-                    disabled={monthIndex === 0}
+                    onClick={() => setMonthIndex((i) => Math.max(-1, i - 1))}
+                    disabled={monthIndex === -1}
                     aria-label="Previous month"
                   >
                     ‹
                   </button>
                   <div className={styles.nextMonthContent}>
                     <span className={styles.nextMonthLabel}>
-                      {portfolio.upcoming_months[monthIndex].label} EMI
+                      {monthIndex === -1
+                        ? `${portfolio.current_month.label} EMI`
+                        : `${portfolio.upcoming_months[monthIndex].label} EMI`}
                     </span>
                     <span className={styles.nextMonthAmount}>
-                      {fmtCurrency(portfolio.upcoming_months[monthIndex].amount)}
+                      {monthIndex === -1
+                        ? fmtCurrency(portfolio.current_month.amount)
+                        : fmtCurrency(portfolio.upcoming_months[monthIndex].amount)}
                     </span>
                   </div>
                   <button
