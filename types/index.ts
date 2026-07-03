@@ -364,6 +364,7 @@ export interface LoanPortfolioSummary {
   total_outstanding_principal: number; // of total_outstanding, the principal portion (across active loans)
   total_outstanding_interest: number; // of total_outstanding, the interest portion (across active loans)
   total_interest: number; // sum of total_interest across all loans (running + completed)
+  current_month: { month: string; label: string; amount: number }; // this month's total EMI across all active loans
   upcoming_months: {
     month: string;
     label: string;
