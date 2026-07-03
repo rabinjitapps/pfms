@@ -188,6 +188,21 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
 
   const today = new Date();
   const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+
+  // Current month total EMI (across all active loans, unpaid installments in this exact month)
+  let currentMonthTotal = 0;
+  for (const ls of activeSummaries) {
+    for (const m of ls.emi_schedule) {
+      if (m.is_paid) continue;
+      if (m.month === currentMonthStr) currentMonthTotal += m.emi_amount;
+    }
+  }
+  const currentMonth: LoanPortfolioSummary['current_month'] = {
+    month: currentMonthStr,
+    label: new Date(currentMonthStr + '-01').toLocaleString('en-IN', { month: 'long', year: 'numeric' }),
+    amount: Math.round(currentMonthTotal * 100) / 100,
+  };
+
   const monthTotals = new Map<string, number>();
   for (const ls of activeSummaries) {
     for (const m of ls.emi_schedule) {
@@ -250,6 +265,7 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
     total_outstanding_principal: totalOutstandingPrincipal,
     total_outstanding_interest: totalOutstandingInterest,
     total_interest: totalInterest,
+    current_month: currentMonth,
     upcoming_months: upcomingMonths,
     percent_complete: percentComplete,
     debt_free_date: debtFreeDate,
