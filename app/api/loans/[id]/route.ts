@@ -54,12 +54,77 @@ export async function PATCH(
   const body = await req.json();
   const { name, principal, tenure_value, tenure_unit, emi_start_date, loan_type } = body;
 
+  const resolvedType = loan_type ?? existing.loan_type;
   const loanType: LoanType =
-    (loan_type ?? existing.loan_type) === 'flexi'
+    resolvedType === 'flexi'
       ? 'flexi'
-      : (loan_type ?? existing.loan_type) === 'monthly'
+      : resolvedType === 'monthly'
       ? 'monthly'
+      : resolvedType === 'open'
+      ? 'open'
       : 'standard';
+
+  if (loanType === 'open') {
+    const principalNum = principal != null ? Number(principal) : existing.principal;
+    const rateNum = body.interest_rate != null ? Number(body.interest_rate) : existing.interest_rate;
+
+    if (!(principalNum > 0)) {
+      return NextResponse.json({ error: 'Principal must be positive' }, { status: 400 });
+    }
+    if (!(rateNum > 0)) {
+      return NextResponse.json({ error: 'Interest rate must be positive' }, { status: 400 });
+    }
+
+    // outstanding_principal is normally managed by ledger entries (see
+    // /api/loans/[id]/ledger), so editing it directly here is only allowed
+    // before any payments have been recorded — otherwise a "repaid till
+    // now" edit could silently contradict the actual ledger history.
+    const { count: ledgerCount } = await supabaseAdmin
+      .from('loan_ledger_entries')
+      .select('id', { count: 'exact', head: true })
+      .eq('loan_id', id);
+
+    let outstandingPrincipal = existing.outstanding_principal ?? existing.principal;
+    if (!ledgerCount) {
+      const repaidTillNow = body.repaid_till_now != null ? Number(body.repaid_till_now) : null;
+      if (repaidTillNow != null) {
+        if (repaidTillNow < 0 || repaidTillNow >= principalNum) {
+          return NextResponse.json(
+            { error: 'Repaid-till-now must be zero or positive, and less than the principal' },
+            { status: 400 }
+          );
+        }
+        outstandingPrincipal = Math.round((principalNum - repaidTillNow) * 100) / 100;
+      } else if (principal != null) {
+        // Principal changed but repaid-till-now wasn't re-specified — keep
+        // the same amount-already-repaid, applied to the new principal.
+        const previouslyRepaid = existing.principal - (existing.outstanding_principal ?? existing.principal);
+        outstandingPrincipal = Math.round((principalNum - previouslyRepaid) * 100) / 100;
+      }
+    }
+
+    const { data: loan, error } = await supabaseAdmin
+      .from('loans')
+      .update({
+        name: (name ?? existing.name).trim(),
+        loan_type: 'open',
+        principal: Math.round(principalNum * 100) / 100,
+        emi_start_date: emi_start_date ?? existing.emi_start_date,
+        interest_rate: Math.round(rateNum * 100) / 100,
+        outstanding_principal: outstandingPrincipal,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error || !loan) {
+      console.error('Failed to update loan:', error);
+      return NextResponse.json({ error: 'Failed to update loan' }, { status: 500 });
+    }
+
+    return NextResponse.json({ loan });
+  }
 
   const principalNum = principal != null ? Number(principal) : existing.principal;
   const tenureNum = tenure_value != null ? Number(tenure_value) : existing.tenure_value;
