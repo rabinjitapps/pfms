@@ -40,6 +40,25 @@ export async function GET() {
         loan.payments = byLoan[loan.id] ?? [];
       }
     }
+
+    const { data: ledgerEntries, error: ledgerError } = await supabaseAdmin
+      .from('loan_ledger_entries')
+      .select('*')
+      .in('loan_id', loanIds)
+      .order('entry_date', { ascending: false });
+
+    if (ledgerError) {
+      console.error('Failed to fetch loan ledger entries:', ledgerError);
+    } else {
+      const ledgerByLoan: Record<string, typeof ledgerEntries> = {};
+      for (const e of ledgerEntries ?? []) {
+        if (!ledgerByLoan[e.loan_id]) ledgerByLoan[e.loan_id] = [];
+        ledgerByLoan[e.loan_id].push(e);
+      }
+      for (const loan of loans) {
+        loan.ledger = ledgerByLoan[loan.id] ?? [];
+      }
+    }
   }
 
   return NextResponse.json({ loans });
@@ -60,7 +79,69 @@ export async function POST(req: NextRequest) {
   } = body;
 
   const loanType: LoanType =
-    loan_type === 'flexi' ? 'flexi' : loan_type === 'monthly' ? 'monthly' : 'standard';
+    loan_type === 'flexi'
+      ? 'flexi'
+      : loan_type === 'monthly'
+      ? 'monthly'
+      : loan_type === 'open'
+      ? 'open'
+      : 'standard';
+
+  // Open loans have no fixed tenure, so they skip the tenure/EMI fields
+  // that every other loan type requires up front.
+  if (loanType === 'open') {
+    if (!name || !principal || !emi_start_date) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const principalNum = Number(principal);
+    const rateNum = Number(body.interest_rate);
+    const repaidTillNow = body.repaid_till_now != null ? Number(body.repaid_till_now) : 0;
+
+    if (!(principalNum > 0)) {
+      return NextResponse.json({ error: 'Principal must be positive' }, { status: 400 });
+    }
+    if (!(rateNum > 0)) {
+      return NextResponse.json({ error: 'Interest rate must be positive' }, { status: 400 });
+    }
+    if (repaidTillNow < 0 || repaidTillNow >= principalNum) {
+      return NextResponse.json(
+        { error: 'Repaid-till-now must be zero or positive, and less than the principal' },
+        { status: 400 }
+      );
+    }
+
+    const outstandingPrincipal = Math.round((principalNum - repaidTillNow) * 100) / 100;
+
+    const { data: loan, error } = await supabaseAdmin
+      .from('loans')
+      .insert({
+        user_id: userId,
+        name: name.trim(),
+        loan_type: 'open',
+        principal: Math.round(principalNum * 100) / 100,
+        emi_amount: 0,
+        tenure_value: 0,
+        tenure_unit: 'months',
+        emi_start_date,
+        total_months: 0,
+        interest_rate: Math.round(rateNum * 100) / 100,
+        interest_only_value: 0,
+        interest_only_unit: 'years',
+        interest_only_months: 0,
+        interest_only_payment: 0,
+        outstanding_principal: outstandingPrincipal,
+      })
+      .select('*')
+      .single();
+
+    if (error || !loan) {
+      console.error('Failed to create loan:', error);
+      return NextResponse.json({ error: 'Failed to save loan' }, { status: 500 });
+    }
+
+    return NextResponse.json({ loan });
+  }
 
   if (!name || !principal || !tenure_value || !tenure_unit || !emi_start_date) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
