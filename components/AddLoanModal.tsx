@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Loan, LoanTenureUnit, LoanType } from '@/types';
-import { calcInterestRate, calcEmiFromRate, calcInterestOnlyPayment } from '@/lib/loanMath';
+import {
+  calcInterestRate,
+  calcEmiFromRate,
+  calcInterestOnlyPayment,
+  calcOpenLoanMonthlyInterest,
+} from '@/lib/loanMath';
 import styles from './AddLoanModal.module.css';
 
 interface Props {
@@ -29,6 +34,11 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
   // (and shown everywhere else) as its annual equivalent, like every other loan.
   const [monthlyRateInput, setMonthlyRateInput] = useState('');
 
+  // open-only fields — no fixed tenure; rate is annual %, and repaid-till-now
+  // is a one-time adjustment applied to the starting outstanding balance.
+  const [openRateInput, setOpenRateInput] = useState('');
+  const [repaidTillNow, setRepaidTillNow] = useState('');
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +55,11 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
       setMonthlyRateInput(existing.interest_rate ? String(existing.interest_rate / 12) : '');
       setInterestOnlyValue(existing.interest_only_value ? String(existing.interest_only_value) : '');
       setInterestOnlyUnit(existing.interest_only_unit ?? 'years');
+      if (existing.loan_type === 'open') {
+        setOpenRateInput(existing.interest_rate ? String(existing.interest_rate) : '');
+        const alreadyRepaid = existing.principal - (existing.outstanding_principal ?? existing.principal);
+        setRepaidTillNow(alreadyRepaid > 0 ? String(Math.round(alreadyRepaid * 100) / 100) : '');
+      }
     }
   }, [existing]);
 
@@ -56,6 +71,12 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
   const rateNum = Number(interestRateInput);
   const monthlyRateNum = Number(monthlyRateInput);
   const ioValueNum = Number(interestOnlyValue);
+
+  // open-loan derived values
+  const openRateNum = Number(openRateInput);
+  const repaidTillNowNum = Number(repaidTillNow) || 0;
+  const openOutstanding = principalNum > 0 ? Math.max(0, principalNum - repaidTillNowNum) : 0;
+  const hasLedgerHistory = !!(existing?.loan_type === 'open' && existing.ledger && existing.ledger.length > 0);
   const interestOnlyMonths =
     loanType === 'flexi' && ioValueNum > 0
       ? interestOnlyUnit === 'years'
@@ -70,8 +91,16 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
   let previewInterestOnlyPayment: number | null = null;
   let totalPayable: number | null = null;
   let totalInterest: number | null = null;
+  let previewOpenInterest: number | null = null;
+  let previewOpenOutstanding: number | null = null;
 
-  if (loanType === 'standard') {
+  if (loanType === 'open') {
+    if (principalNum > 0 && openRateNum > 0) {
+      previewRate = openRateNum;
+      previewOpenOutstanding = openOutstanding;
+      previewOpenInterest = calcOpenLoanMonthlyInterest(openOutstanding, openRateNum);
+    }
+  } else if (loanType === 'standard') {
     previewRate =
       principalNum > 0 && emiNum > 0 && totalMonths > 0
         ? calcInterestRate(principalNum, emiNum, totalMonths)
@@ -103,22 +132,30 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
 
     if (!name.trim()) { setError('Loan name is required.'); return; }
     if (!principalNum || principalNum <= 0) { setError('Principal must be positive.'); return; }
-    if (!tenureNum || tenureNum <= 0) { setError('Tenure must be positive.'); return; }
-    if (!emiStartDate) { setError('EMI start date is required.'); return; }
+    if (!emiStartDate) { setError('Start date is required.'); return; }
 
-    if (loanType === 'standard') {
-      if (!emiNum || emiNum <= 0) { setError('EMI amount must be positive.'); return; }
-    } else if (loanType === 'monthly') {
-      if (!monthlyRateNum || monthlyRateNum <= 0) {
-        setError('Monthly interest rate must be positive.');
+    if (loanType === 'open') {
+      if (!openRateNum || openRateNum <= 0) { setError('Interest rate must be positive.'); return; }
+      if (repaidTillNowNum < 0 || repaidTillNowNum >= principalNum) {
+        setError('Repaid till now must be zero or positive, and less than the principal.');
         return;
       }
     } else {
-      if (!rateNum || rateNum <= 0) { setError('Interest rate must be positive.'); return; }
-      if (ioValueNum < 0) { setError('Interest-only period cannot be negative.'); return; }
-      if (interestOnlyMonths >= totalMonths) {
-        setError('Interest-only period must be shorter than the total tenure.');
-        return;
+      if (!tenureNum || tenureNum <= 0) { setError('Tenure must be positive.'); return; }
+      if (loanType === 'standard') {
+        if (!emiNum || emiNum <= 0) { setError('EMI amount must be positive.'); return; }
+      } else if (loanType === 'monthly') {
+        if (!monthlyRateNum || monthlyRateNum <= 0) {
+          setError('Monthly interest rate must be positive.');
+          return;
+        }
+      } else {
+        if (!rateNum || rateNum <= 0) { setError('Interest rate must be positive.'); return; }
+        if (ioValueNum < 0) { setError('Interest-only period cannot be negative.'); return; }
+        if (interestOnlyMonths >= totalMonths) {
+          setError('Interest-only period must be shorter than the total tenure.');
+          return;
+        }
       }
     }
 
@@ -131,19 +168,26 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
         name: name.trim(),
         loan_type: loanType,
         principal: principalNum,
-        tenure_value: tenureNum,
-        tenure_unit: tenureUnit,
         emi_start_date: emiStartDate,
       };
 
-      if (loanType === 'standard') {
-        payload.emi_amount = emiNum;
-      } else if (loanType === 'monthly') {
-        payload.monthly_interest_rate = monthlyRateNum;
+      if (loanType === 'open') {
+        payload.interest_rate = openRateNum;
+        if (!hasLedgerHistory) {
+          payload.repaid_till_now = repaidTillNowNum;
+        }
       } else {
-        payload.interest_rate = rateNum;
-        payload.interest_only_value = ioValueNum || 0;
-        payload.interest_only_unit = interestOnlyUnit;
+        payload.tenure_value = tenureNum;
+        payload.tenure_unit = tenureUnit;
+        if (loanType === 'standard') {
+          payload.emi_amount = emiNum;
+        } else if (loanType === 'monthly') {
+          payload.monthly_interest_rate = monthlyRateNum;
+        } else {
+          payload.interest_rate = rateNum;
+          payload.interest_only_value = ioValueNum || 0;
+          payload.interest_only_unit = interestOnlyUnit;
+        }
       }
 
       const res = await fetch(url, {
@@ -218,6 +262,13 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
               >
                 Monthly Rate (e.g. Instamoney)
               </button>
+              <button
+                type="button"
+                className={loanType === 'open' ? `${styles.typeBtn} ${styles.typeBtnActive}` : styles.typeBtn}
+                onClick={() => setLoanType('open')}
+              >
+                Open-Ended (No Fixed Tenure)
+              </button>
             </div>
             {loanType === 'flexi' && (
               <p className={styles.typeHint}>
@@ -228,6 +279,13 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
               <p className={styles.typeHint}>
                 For lenders that quote a monthly rate (common with short-term/instant loan apps). Enter the
                 monthly % and it's shown everywhere else as the equivalent annual rate, just like other loans.
+              </p>
+            )}
+            {loanType === 'open' && (
+              <p className={styles.typeHint}>
+                No fixed repayment period — each month you record either an interest-only payment (auto-calculated
+                on the current balance) or an EMI-style payment of your choosing that also chips away at the
+                principal. Interest recalculates every month off whatever the outstanding balance is at the time.
               </p>
             )}
           </div>
@@ -246,7 +304,21 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
                 required
               />
             </div>
-            {loanType === 'standard' ? (
+            {loanType === 'open' ? (
+              <div className={styles.field}>
+                <label className={styles.label}>Interest Rate (% p.a.)</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="e.g. 12"
+                  value={openRateInput}
+                  onChange={(e) => setOpenRateInput(e.target.value)}
+                  required
+                />
+              </div>
+            ) : loanType === 'standard' ? (
               <div className={styles.field}>
                 <label className={styles.label}>EMI Amount (₹ / month)</label>
                 <input
@@ -291,32 +363,59 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
             )}
           </div>
 
-          <div className={styles.row}>
+          {loanType === 'open' ? (
             <div className={styles.field}>
-              <label className={styles.label}>Total Tenure</label>
+              <label className={styles.label}>Repaid Till Now (₹)</label>
               <input
                 className={styles.input}
                 type="number"
-                min="1"
+                min="0"
                 step="1"
-                placeholder={tenureUnit === 'years' ? 'e.g. 7' : 'e.g. 84'}
-                value={tenureValue}
-                onChange={(e) => setTenureValue(e.target.value)}
-                required
+                placeholder="e.g. 50000"
+                value={repaidTillNow}
+                onChange={(e) => setRepaidTillNow(e.target.value)}
+                disabled={hasLedgerHistory}
               />
+              {hasLedgerHistory ? (
+                <p className={styles.typeHint}>
+                  This loan already has recorded payments, so its outstanding balance is now managed from the
+                  ledger instead — edit it from the loan card.
+                </p>
+              ) : (
+                <p className={styles.typeHint}>
+                  One-time adjustment: how much of the principal has already been paid off before adding it here.
+                  Leave blank or 0 if none.
+                </p>
+              )}
             </div>
-            <div className={styles.field}>
-              <label className={styles.label}>Unit</label>
-              <select
-                className={styles.select}
-                value={tenureUnit}
-                onChange={(e) => setTenureUnit(e.target.value as LoanTenureUnit)}
-              >
-                <option value="years">Years</option>
-                <option value="months">Months</option>
-              </select>
+          ) : (
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>Total Tenure</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder={tenureUnit === 'years' ? 'e.g. 7' : 'e.g. 84'}
+                  value={tenureValue}
+                  onChange={(e) => setTenureValue(e.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>Unit</label>
+                <select
+                  className={styles.select}
+                  value={tenureUnit}
+                  onChange={(e) => setTenureUnit(e.target.value as LoanTenureUnit)}
+                >
+                  <option value="years">Years</option>
+                  <option value="months">Months</option>
+                </select>
+              </div>
             </div>
-          </div>
+          )}
 
           {loanType === 'flexi' && (
             <div className={styles.row}>
@@ -348,7 +447,7 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
           )}
 
           <div className={styles.field}>
-            <label className={styles.label}>EMI Start Date</label>
+            <label className={styles.label}>{loanType === 'open' ? 'Loan Start Date' : 'EMI Start Date'}</label>
             <input
               className={styles.input}
               type="date"
@@ -371,6 +470,23 @@ export default function AddLoanModal({ existing, onClose, onSaved }: Props) {
                 </span>
                 <span className={styles.previewRate}>{previewRate.toFixed(2)}% p.a.</span>
               </div>
+
+              {loanType === 'open' && previewOpenOutstanding !== null && (
+                <>
+                  <div className={styles.previewRow}>
+                    <span className={styles.previewLabel}>Starting Outstanding Balance</span>
+                    <span className={styles.previewValue}>
+                      ₹{previewOpenOutstanding.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div className={styles.previewRow}>
+                    <span className={styles.previewLabel}>This Month&apos;s Interest (if interest-only)</span>
+                    <span className={styles.previewValue}>
+                      ₹{(previewOpenInterest ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}/mo
+                    </span>
+                  </div>
+                </>
+              )}
 
               {loanType === 'monthly' && (
                 <div className={styles.previewRow}>
