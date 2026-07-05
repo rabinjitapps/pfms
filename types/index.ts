@@ -293,7 +293,16 @@ export type LoanTenureUnit = 'months' | 'years';
 //              "X% p.a." badge on the loan card, the debt-free countdown,
 //              etc. — displays it exactly like any other loan with no
 //              special-casing needed.
-export type LoanType = 'standard' | 'flexi' | 'monthly';
+// 'open'     = open-ended / running-balance loan with NO fixed tenure. There's
+//              no pre-generated EMI schedule — instead outstanding_principal
+//              is a live balance that the person updates by hand each month
+//              via a ledger entry (see LoanLedgerEntry): either "interest
+//              only" (auto-charges that month's interest on the current
+//              balance, balance untouched) or "payment" (a person-entered ₹
+//              amount, split into interest + principal, which reduces the
+//              balance). interest_rate is entered directly as an annual %,
+//              same as flexi.
+export type LoanType = 'standard' | 'flexi' | 'monthly' | 'open';
 
 export interface Loan {
   id: string;
@@ -301,26 +310,47 @@ export interface Loan {
   name: string;
   loan_type: LoanType;
   principal: number;
-  emi_amount: number;     // standard: the flat EMI. flexi: the EMI for the post-interest-only phase.
-  tenure_value: number;
+  emi_amount: number;     // standard: the flat EMI. flexi: the EMI for the post-interest-only phase. open: unused (0).
+  tenure_value: number;   // open: unused (0) — tenure isn't decided up front.
   tenure_unit: LoanTenureUnit;
-  emi_start_date: string; // YYYY-MM-DD
-  total_months: number;   // derived: tenure_value * (unit === 'years' ? 12 : 1)
-  interest_rate: number;  // annual %. standard: auto-calculated from EMI formula. flexi: entered directly.
-  // Flexi-only fields (0 / 'years' for standard loans):
+  emi_start_date: string; // YYYY-MM-DD — for open loans, the date the loan began.
+  total_months: number;   // derived: tenure_value * (unit === 'years' ? 12 : 1). open: unused (0).
+  interest_rate: number;  // annual %. standard: auto-calculated from EMI formula. flexi/open: entered directly.
+  // Flexi-only fields (0 / 'years' for standard/monthly/open loans):
   interest_only_value: number;        // raw value as entered, e.g. 2
   interest_only_unit: LoanTenureUnit; // unit for interest_only_value
   interest_only_months: number;       // derived: interest_only_value in months
   interest_only_payment: number;      // monthly interest-only installment during the moratorium
+  // Open-loan-only field (null for every other loan_type): the live
+  // outstanding balance, seeded at creation from principal minus whatever
+  // had already been repaid, then updated after every ledger entry.
+  outstanding_principal: number | null;
   created_at: string;
   updated_at: string;
   payments?: LoanPayment[]; // manually-marked-paid months, attached by GET /api/loans
+  ledger?: LoanLedgerEntry[]; // open loans only: full payment history, attached by GET /api/loans
 }
 
 export interface LoanPayment {
   loan_id?: string;
   month: string;   // YYYY-MM
   paid_at: string; // ISO timestamp
+}
+
+// A single month's entry in an open-ended loan's running ledger.
+export type LoanLedgerEntryType = 'interest_only' | 'payment';
+
+export interface LoanLedgerEntry {
+  id: string;
+  loan_id?: string;
+  entry_date: string;   // YYYY-MM-DD, the date this entry was recorded against
+  month: string;         // YYYY-MM
+  entry_type: LoanLedgerEntryType;
+  amount: number;               // total ₹ paid this entry
+  interest_component: number;
+  principal_component: number;
+  balance_after: number;        // outstanding_principal immediately after this entry
+  created_at: string;
 }
 
 export type LoanEmiPhase = 'interest_only' | 'emi';
@@ -354,6 +384,10 @@ export interface LoanSummary {
   outstanding_principal: number; // of total_amount_pending, the portion that is still-unpaid principal
   outstanding_interest: number; // of total_amount_pending, the portion that is still-unpaid interest
   is_closed: boolean; // true once every EMI is paid off (pending_count === 0)
+  // Open loans only (undefined/false for every other loan_type):
+  is_open_ended?: boolean;        // true for loan_type === 'open' — tenure/debt-free date are undetermined
+  current_interest_due?: number;  // this month's accrued interest on the current outstanding balance
+  ledger?: LoanLedgerEntry[];     // full payment history, most recent first
 }
 
 export interface LoanPortfolioSummary {
