@@ -643,3 +643,174 @@
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   }
 }
+
+/* ── open-ended loan section ── */
+.openBadge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--brass-soft);
+  color: var(--brass);
+  padding: 3px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.openBalanceCard {
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.openBalanceLabel {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.openBalanceValue {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.openInterestHint {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.recordPaymentForm {
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recordPaymentRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.recordPaymentField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.recordPaymentInput {
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper-raised);
+  outline: none;
+  width: 150px;
+}
+
+.recordPaymentInput:focus {
+  border-color: var(--ink);
+}
+
+.recordPaymentBtn {
+  background: var(--ink);
+  color: var(--paper-raised);
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.recordPaymentBtn:hover {
+  opacity: 0.85;
+}
+
+.recordPaymentBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.ledgerList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 16px;
+}
+
+.ledgerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--paper);
+  font-size: 12.5px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ledgerRowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ledgerRowDate {
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.ledgerRowBreakdown {
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+.ledgerRowAmount {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ledgerUndoBtn {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 4px 9px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.ledgerUndoBtn:hover {
+  color: var(--brick);
+  border-color: var(--brick);
+}
+
+.ledgerEmpty {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
