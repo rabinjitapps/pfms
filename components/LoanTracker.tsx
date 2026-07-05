@@ -175,18 +175,201 @@ function MonthlyScheduleTable({
   );
 }
 
+function OpenLoanSection({
+  loan,
+  summary,
+  expanded,
+  onToggleExpanded,
+  onRecorded,
+}: {
+  loan: Loan;
+  summary: LoanSummary;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  onRecorded: () => void;
+}) {
+  const [entryType, setEntryType] = useState<'interest_only' | 'payment'>('interest_only');
+  const [amount, setAmount] = useState('');
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
+  const [undoingId, setUndoingId] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const currentInterestDue = summary.current_interest_due ?? 0;
+  const ledger = summary.ledger ?? [];
+
+  const handleRecord = async () => {
+    setFormError(null);
+    if (entryType === 'payment' && (!amount || Number(amount) <= 0)) {
+      setFormError('Enter a payment amount.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/loans/${loan.id}/ledger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entry_type: entryType,
+          amount: entryType === 'payment' ? Number(amount) : undefined,
+          entry_date: entryDate,
+          month: entryDate.slice(0, 7),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFormError(data.error || 'Failed to record payment.');
+        return;
+      }
+      setAmount('');
+      onRecorded();
+    } catch {
+      setFormError('Something went wrong. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUndo = async (entryId: string) => {
+    if (!confirm('Undo this payment entry? This will recompute the outstanding balance.')) return;
+    setUndoingId(entryId);
+    try {
+      const res = await fetch(`/api/loans/${loan.id}/ledger?entry_id=${encodeURIComponent(entryId)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Request failed');
+      onRecorded();
+    } catch {
+      alert('Failed to undo that entry. Please try again.');
+    } finally {
+      setUndoingId(null);
+    }
+  };
+
+  return (
+    <div>
+      <div className={styles.openBalanceCard}>
+        <div>
+          <div className={styles.openBalanceLabel}>Outstanding Balance</div>
+          <div className={styles.openBalanceValue}>{fmtCurrency(summary.outstanding_principal)}</div>
+        </div>
+        {!summary.is_closed && (
+          <div className={styles.openInterestHint}>
+            Interest accruing at {fmtCurrency(currentInterestDue)}/mo on the current balance
+          </div>
+        )}
+      </div>
+
+      {!summary.is_closed && (
+        <div className={styles.recordPaymentForm}>
+          <div className={styles.recordPaymentRow}>
+            <div className={styles.recordPaymentField}>
+              <label className={styles.metricLabel}>Type</label>
+              <select
+                className={styles.recordPaymentInput}
+                value={entryType}
+                onChange={(e) => setEntryType(e.target.value as 'interest_only' | 'payment')}
+              >
+                <option value="interest_only">Interest only ({fmtCurrency(currentInterestDue)})</option>
+                <option value="payment">EMI (interest + principal)</option>
+              </select>
+            </div>
+            {entryType === 'payment' && (
+              <div className={styles.recordPaymentField}>
+                <label className={styles.metricLabel}>Amount (₹)</label>
+                <input
+                  className={styles.recordPaymentInput}
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  placeholder="e.g. 15000"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+            )}
+            <div className={styles.recordPaymentField}>
+              <label className={styles.metricLabel}>Date</label>
+              <input
+                className={styles.recordPaymentInput}
+                type="date"
+                value={entryDate}
+                onChange={(e) => setEntryDate(e.target.value)}
+              />
+            </div>
+            <button className={styles.recordPaymentBtn} onClick={handleRecord} disabled={saving}>
+              {saving ? 'Recording…' : 'Record Payment'}
+            </button>
+          </div>
+          {formError && <div className={styles.errorBanner}>{formError}</div>}
+        </div>
+      )}
+
+      <button
+        className={styles.toggleSchedule}
+        onClick={onToggleExpanded}
+        aria-expanded={expanded}
+      >
+        {expanded ? 'Hide payment history ▲' : `Show payment history (${ledger.length}) ▼`}
+      </button>
+
+      {expanded && (
+        <div className={styles.ledgerList}>
+          {ledger.length === 0 ? (
+            <div className={styles.ledgerEmpty}>No payments recorded yet.</div>
+          ) : (
+            ledger.map((entry) => (
+              <div key={entry.id} className={styles.ledgerRow}>
+                <div className={styles.ledgerRowMain}>
+                  <span className={styles.ledgerRowDate}>
+                    {new Date(entry.entry_date).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                    {' · '}
+                    {entry.entry_type === 'interest_only' ? 'Interest only' : 'EMI'}
+                  </span>
+                  <span className={styles.ledgerRowBreakdown}>
+                    {fmtCurrency(entry.interest_component)} interest
+                    {entry.principal_component > 0 && ` + ${fmtCurrency(entry.principal_component)} principal`}
+                    {' · balance after '}
+                    {fmtCurrency(entry.balance_after)}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className={styles.ledgerRowAmount}>{fmtCurrency(entry.amount)}</span>
+                  <button
+                    className={styles.ledgerUndoBtn}
+                    onClick={() => handleUndo(entry.id)}
+                    disabled={undoingId === entry.id}
+                  >
+                    {undoingId === entry.id ? 'Undoing…' : 'Undo'}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LoanCard({
   summary,
   onDelete,
   onEdit,
   onTogglePayment,
   togglingKey,
+  onOpenLoanChanged,
 }: {
   summary: LoanSummary;
   onDelete: (id: string) => void;
   onEdit: (loan: Loan) => void;
   onTogglePayment: (loanId: string, month: string, nextPaid: boolean) => void;
   togglingKey: string | null;
+  onOpenLoanChanged: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { loan } = summary;
@@ -205,6 +388,7 @@ function LoanCard({
           {summary.is_closed && <span className={styles.closedBadge}>CLOSED</span>}
           {loan.loan_type === 'flexi' && <span className={styles.flexiBadge}>FLEXI</span>}
           {loan.loan_type === 'monthly' && <span className={styles.flexiBadge}>MONTHLY RATE</span>}
+          {loan.loan_type === 'open' && <span className={styles.openBadge}>OPEN-ENDED</span>}
           <span className={styles.loanRate}>{loan.interest_rate.toFixed(2)}% p.a.</span>
         </div>
         <div className={styles.loanCardActions}>
@@ -242,7 +426,20 @@ function LoanCard({
           <span className={styles.metricLabel}>Principal</span>
           <span className={styles.metricValue}>{fmtCurrency(loan.principal)}</span>
         </div>
-        {loan.loan_type === 'flexi' ? (
+        {loan.loan_type === 'open' ? (
+          <>
+            <div className={styles.metric}>
+              <span className={styles.metricLabel}>Repaid So Far</span>
+              <span className={styles.metricValue}>
+                {fmtCurrency(loan.principal - summary.outstanding_principal)}
+              </span>
+            </div>
+            <div className={styles.metric}>
+              <span className={styles.metricLabel}>This Month&apos;s Interest</span>
+              <span className={styles.metricValue}>{fmtCurrency(summary.current_interest_due ?? 0)}</span>
+            </div>
+          </>
+        ) : loan.loan_type === 'flexi' ? (
           <>
             <div className={styles.metric}>
               <span className={styles.metricLabel}>Interest-only / month</span>
@@ -259,18 +456,20 @@ function LoanCard({
             <span className={styles.metricValue}>{fmtCurrency(loan.emi_amount)}</span>
           </div>
         )}
-        <div className={styles.metric}>
-          <span className={styles.metricLabel}>Tenure</span>
-          <span className={styles.metricValue}>
-            {loan.tenure_value} {loan.tenure_unit}
-            {loan.loan_type === 'flexi' && loan.interest_only_months > 0 && (
-              <span className={styles.metricSub}>
-                {' '}
-                ({loan.interest_only_value} {loan.interest_only_unit} interest-only)
-              </span>
-            )}
-          </span>
-        </div>
+        {loan.loan_type !== 'open' && (
+          <div className={styles.metric}>
+            <span className={styles.metricLabel}>Tenure</span>
+            <span className={styles.metricValue}>
+              {loan.tenure_value} {loan.tenure_unit}
+              {loan.loan_type === 'flexi' && loan.interest_only_months > 0 && (
+                <span className={styles.metricSub}>
+                  {' '}
+                  ({loan.interest_only_value} {loan.interest_only_unit} interest-only)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
         <div className={styles.metric}>
           <span className={styles.metricLabel}>Started</span>
           <span className={styles.metricValue}>
@@ -281,14 +480,24 @@ function LoanCard({
           </span>
         </div>
         <div className={styles.metric}>
-          <span className={styles.metricLabel}>Total Interest</span>
+          <span className={styles.metricLabel}>Total Interest {loan.loan_type === 'open' ? 'Paid' : ''}</span>
           <span className={`${styles.metricValue} ${styles.metricValueInterest}`}>
             {fmtCurrency(summary.total_interest)}
           </span>
         </div>
       </div>
 
-      {summary.in_interest_only_phase && (
+      {loan.loan_type === 'open' && (
+        <OpenLoanSection
+          loan={loan}
+          summary={summary}
+          expanded={expanded}
+          onToggleExpanded={() => setExpanded((v) => !v)}
+          onRecorded={() => onOpenLoanChanged()}
+        />
+      )}
+
+      {loan.loan_type !== 'open' && summary.in_interest_only_phase && (
         <div className={styles.ioPhaseBanner}>
           Currently in interest-only phase — {summary.interest_only_months_remaining}{' '}
           {summary.interest_only_months_remaining === 1 ? 'month' : 'months'} left before EMI of{' '}
@@ -296,63 +505,67 @@ function LoanCard({
         </div>
       )}
 
-      {/* EMI progress */}
-      <div className={styles.progressSection}>
-        <div className={styles.progressHeader}>
-          <span className={styles.progressLabel}>EMI Progress</span>
-          <span className={styles.progressStat}>
-            {summary.paid_count} of {summary.total_emis} paid
-            {' · '}
-            <span className={styles.pendingBadge}>{summary.pending_count} pending</span>
-          </span>
-        </div>
-        <ProgressBar pct={summary.percent_complete} color="var(--ledger-green)" />
-        <div className={styles.progressAmounts}>
-          <span className={styles.paidAmount}>{fmtCurrency(summary.total_amount_paid)} paid</span>
-          <span className={styles.pendingAmount}>
-            {fmtCurrency(summary.total_amount_pending)} remaining
-          </span>
-        </div>
-        {summary.total_amount_pending > 0 && (
-          <div className={styles.outstandingBreakdown}>
-            {fmtCurrency(summary.outstanding_principal)} principal
-            {' + '}
-            {fmtCurrency(summary.outstanding_interest)} interest
+      {loan.loan_type !== 'open' && (
+        <>
+          {/* EMI progress */}
+          <div className={styles.progressSection}>
+            <div className={styles.progressHeader}>
+              <span className={styles.progressLabel}>EMI Progress</span>
+              <span className={styles.progressStat}>
+                {summary.paid_count} of {summary.total_emis} paid
+                {' · '}
+                <span className={styles.pendingBadge}>{summary.pending_count} pending</span>
+              </span>
+            </div>
+            <ProgressBar pct={summary.percent_complete} color="var(--ledger-green)" />
+            <div className={styles.progressAmounts}>
+              <span className={styles.paidAmount}>{fmtCurrency(summary.total_amount_paid)} paid</span>
+              <span className={styles.pendingAmount}>
+                {fmtCurrency(summary.total_amount_pending)} remaining
+              </span>
+            </div>
+            {summary.total_amount_pending > 0 && (
+              <div className={styles.outstandingBreakdown}>
+                {fmtCurrency(summary.outstanding_principal)} principal
+                {' + '}
+                {fmtCurrency(summary.outstanding_interest)} interest
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Debt-free progress bar */}
-      <div className={styles.debtFreeSection}>
-        <div className={styles.progressHeader}>
-          <span className={styles.progressLabel}>Debt-free countdown</span>
-          <span className={styles.debtFreeDate}>{debtFreeDateStr}</span>
-        </div>
-        <ProgressBar pct={summary.percent_complete} color="var(--brass)" />
-        <div className={styles.debtFreeFooter}>
-          <span className={styles.paidAmount}>{summary.percent_complete}% complete</span>
-          <span className={styles.pendingAmount}>
-            Free in{' '}
-            <strong>{debtFreeLabel(summary.months_remaining)}</strong>
-          </span>
-        </div>
-      </div>
+          {/* Debt-free progress bar */}
+          <div className={styles.debtFreeSection}>
+            <div className={styles.progressHeader}>
+              <span className={styles.progressLabel}>Debt-free countdown</span>
+              <span className={styles.debtFreeDate}>{debtFreeDateStr}</span>
+            </div>
+            <ProgressBar pct={summary.percent_complete} color="var(--brass)" />
+            <div className={styles.debtFreeFooter}>
+              <span className={styles.paidAmount}>{summary.percent_complete}% complete</span>
+              <span className={styles.pendingAmount}>
+                Free in{' '}
+                <strong>{debtFreeLabel(summary.months_remaining)}</strong>
+              </span>
+            </div>
+          </div>
 
-      {/* Expand toggle */}
-      <button
-        className={styles.toggleSchedule}
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-      >
-        {expanded ? 'Hide month-wise schedule ▲' : 'Show month-wise schedule ▼'}
-      </button>
+          {/* Expand toggle */}
+          <button
+            className={styles.toggleSchedule}
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+          >
+            {expanded ? 'Hide month-wise schedule ▲' : 'Show month-wise schedule ▼'}
+          </button>
 
-      {expanded && (
-        <MonthlyScheduleTable
-          schedule={summary.emi_schedule}
-          togglingMonth={togglingMonth}
-          onToggle={(month, nextPaid) => onTogglePayment(loan.id, month, nextPaid)}
-        />
+          {expanded && (
+            <MonthlyScheduleTable
+              schedule={summary.emi_schedule}
+              togglingMonth={togglingMonth}
+              onToggle={(month, nextPaid) => onTogglePayment(loan.id, month, nextPaid)}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -614,6 +827,7 @@ export default function LoanTracker({ displayName }: Props) {
                       onEdit={(loan) => { setEditingLoan(loan); setShowModal(true); }}
                       onTogglePayment={handleTogglePayment}
                       togglingKey={togglingKey}
+                      onOpenLoanChanged={fetchLoans}
                     />
                   ))}
                 </div>
@@ -636,6 +850,7 @@ export default function LoanTracker({ displayName }: Props) {
                         onEdit={(loan) => { setEditingLoan(loan); setShowModal(true); }}
                         onTogglePayment={handleTogglePayment}
                         togglingKey={togglingKey}
+                        onOpenLoanChanged={fetchLoans}
                       />
                     ))}
                   </div>
