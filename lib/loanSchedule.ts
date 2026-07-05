@@ -8,7 +8,83 @@
  */
 
 import { Loan, LoanSummary, LoanPortfolioSummary, LoanEmiMonth } from '@/types';
-import { monthlyRateFromAnnual } from '@/lib/loanMath';
+import { monthlyRateFromAnnual, calcOpenLoanMonthlyInterest } from '@/lib/loanMath';
+
+function currentMonthStr(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Open loans have no fixed tenure or pre-generated schedule — they're
+ * summarized from their live outstanding_principal plus whatever ledger
+ * entries have actually been recorded, rather than a projected future
+ * schedule. Several LoanSummary fields that only make sense for a
+ * fixed-tenure loan (debt_free_date, months_remaining, emi_schedule as a
+ * future plan) are given sentinel/best-effort values here; the UI checks
+ * is_open_ended before relying on those.
+ */
+function buildOpenLoanSummary(loan: Loan): LoanSummary {
+  const ledger = [...(loan.ledger ?? [])].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
+  const outstanding = Math.max(0, loan.outstanding_principal ?? loan.principal);
+  const currentInterestDue = calcOpenLoanMonthlyInterest(outstanding, loan.interest_rate);
+  const is_closed = outstanding <= 0;
+
+  const paid_count = ledger.length;
+  const total_amount_paid = Math.round(ledger.reduce((s, e) => s + e.amount, 0) * 100) / 100;
+  const total_interest = Math.round(ledger.reduce((s, e) => s + e.interest_component, 0) * 100) / 100;
+
+  // "Pending" for an open loan means: the balance still owed, plus this
+  // month's interest that has accrued but hasn't been recorded yet (if this
+  // month hasn't had an entry logged for it).
+  const hasEntryThisMonth = ledger.some((e) => e.month === currentMonthStr());
+  const pendingInterest = hasEntryThisMonth || is_closed ? 0 : currentInterestDue;
+  const total_amount_pending = Math.round((outstanding + pendingInterest) * 100) / 100;
+
+  const percent_complete =
+    loan.principal > 0 ? Math.round(((loan.principal - outstanding) / loan.principal) * 100) : 100;
+
+  // Represent the ledger history as an emi_schedule so the existing
+  // month-wise UI can still list it (in reverse-chronological order, since
+  // there's no "future" to show) — is_open_ended tells the UI not to offer
+  // the toggle-paid interaction that fixed-tenure loans use here.
+  const emi_schedule: LoanEmiMonth[] = ledger
+    .slice()
+    .reverse()
+    .map((e) => ({
+      month: e.month,
+      emi_amount: e.amount,
+      phase: e.entry_type === 'interest_only' ? 'interest_only' : 'emi',
+      is_paid: true,
+      manually_paid: true,
+      is_future: false,
+      principal_component: e.principal_component,
+      interest_component: e.interest_component,
+    }));
+
+  return {
+    loan,
+    paid_count,
+    pending_count: is_closed ? 0 : 1,
+    total_emis: paid_count + (is_closed ? 0 : 1),
+    total_amount_paid,
+    total_amount_pending,
+    percent_complete,
+    debt_free_date: is_closed ? new Date().toISOString() : '',
+    months_remaining: is_closed ? 0 : -1,
+    years_remaining: is_closed ? 0 : -1,
+    emi_schedule,
+    in_interest_only_phase: false,
+    interest_only_months_remaining: 0,
+    total_interest,
+    outstanding_principal: outstanding,
+    outstanding_interest: pendingInterest,
+    is_closed,
+    is_open_ended: true,
+    current_interest_due: currentInterestDue,
+    ledger,
+  };
+}
 
 /**
  * Reducing-balance amortization: walk the loan's full schedule month by
@@ -62,6 +138,8 @@ function buildAmortizationSchedule(
 }
 
 export function buildLoanSummary(loan: Loan): LoanSummary {
+  if (loan.loan_type === 'open') return buildOpenLoanSummary(loan);
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -178,6 +256,10 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
   const closedSummaries = summaries.filter((ls) => ls.is_closed);
 
   const totalMonthlyEmi = activeSummaries.reduce((s, ls) => {
+    // Open loans have no scheduled next installment — the closest analog is
+    // this month's not-yet-recorded accrued interest (the minimum a person
+    // owes if they only pay interest-only this month).
+    if (ls.is_open_ended) return s + (ls.outstanding_interest ?? 0);
     const nextDue = ls.emi_schedule.find((m) => !m.is_paid);
     return s + (nextDue ? nextDue.emi_amount : 0);
   }, 0);
@@ -192,6 +274,10 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
   // Current month total EMI (across all active loans, unpaid installments in this exact month)
   let currentMonthTotal = 0;
   for (const ls of activeSummaries) {
+    if (ls.is_open_ended) {
+      currentMonthTotal += ls.outstanding_interest ?? 0;
+      continue;
+    }
     for (const m of ls.emi_schedule) {
       if (m.is_paid) continue;
       if (m.month === currentMonthStr) currentMonthTotal += m.emi_amount;
@@ -242,13 +328,16 @@ export function buildPortfolioSummary(loans: Loan[]): LoanPortfolioSummary {
   // free once its slowest-finishing loan is paid off, so the date is the
   // latest debt_free_date among loans that still have something pending.
   // Progress is the combined EMI count paid across every loan, mirroring
-  // the per-loan percent_complete so the two read consistently.
-  const totalEmisAll = summaries.reduce((s, ls) => s + ls.total_emis, 0);
-  const paidCountAll = summaries.reduce((s, ls) => s + ls.paid_count, 0);
+  // the per-loan percent_complete so the two read consistently. Open loans
+  // have no fixed tenure/debt-free date to contribute here, so they're
+  // excluded from both — they still count toward every ₹ total above.
+  const tenuredSummaries = summaries.filter((ls) => !ls.is_open_ended);
+  const totalEmisAll = tenuredSummaries.reduce((s, ls) => s + ls.total_emis, 0);
+  const paidCountAll = tenuredSummaries.reduce((s, ls) => s + ls.paid_count, 0);
   const percentComplete = totalEmisAll > 0 ? Math.round((paidCountAll / totalEmisAll) * 100) : 100;
   const totalAmountPaidAll = summaries.reduce((s, ls) => s + ls.total_amount_paid, 0);
 
-  const pendingSummaries = summaries.filter((ls) => ls.pending_count > 0);
+  const pendingSummaries = tenuredSummaries.filter((ls) => ls.pending_count > 0);
   const debtFreeDate =
     pendingSummaries.length > 0
       ? pendingSummaries.reduce(
@@ -297,6 +386,7 @@ export function getUpcomingEmis(loans: Loan[], limit = 8): UpcomingEmi[] {
 
   const out: UpcomingEmi[] = [];
   for (const loan of loans) {
+    if (loan.loan_type === 'open') continue; // no fixed schedule to project
     const summary = buildLoanSummary(loan);
     const day = dueDay(loan);
     for (const m of summary.emi_schedule) {
