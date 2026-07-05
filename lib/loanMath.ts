@@ -66,3 +66,16 @@ export function calcInterestOnlyPayment(principal: number, annualRatePct: number
   if (principal <= 0 || annualRatePct <= 0) return 0;
   return Math.round(principal * monthlyRateFromAnnual(annualRatePct) * 100) / 100;
 }
+
+/**
+ * This month's accrued interest on an OPEN loan's current outstanding
+ * balance. Used both to auto-fill "interest only" ledger entries and to
+ * split a "payment" entry's amount into interest vs principal — since an
+ * open loan has no fixed tenure, this is recomputed fresh every month off
+ * whatever the balance currently is, rather than read off a pre-built
+ * amortization schedule.
+ */
+export function calcOpenLoanMonthlyInterest(outstandingPrincipal: number, annualRatePct: number): number {
+  if (outstandingPrincipal <= 0 || annualRatePct <= 0) return 0;
+  return Math.round(outstandingPrincipal * monthlyRateFromAnnual(annualRatePct) * 100) / 100;
+}
