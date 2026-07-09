@@ -278,6 +278,65 @@
   margin-bottom: 18px;
 }
 
+.loanCardHeaderClickable {
+  cursor: pointer;
+  user-select: none;
+  border-radius: 4px;
+  margin-left: -8px;
+  margin-right: -8px;
+  padding: 4px 8px;
+  transition: background 0.12s;
+}
+
+.loanCardHeaderClickable:hover {
+  background: var(--brass-soft);
+}
+
+.collapseChevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: transform 0.2s ease, color 0.12s;
+}
+
+.collapseChevron:hover {
+  color: var(--brass);
+}
+
+.collapseChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.collapsedSummary {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.collapseWrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.25s ease;
+}
+
+.collapseWrapClosed {
+  grid-template-rows: 0fr;
+}
+
+.collapseInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
 .loanCardTitle {
   display: flex;
   align-items: center;

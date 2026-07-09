@@ -372,6 +372,7 @@ function LoanCard({
   onOpenLoanChanged: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const { loan } = summary;
   const togglingMonth =
     togglingKey && togglingKey.startsWith(loan.id + ':') ? togglingKey.slice(loan.id.length + 1) : null;
@@ -382,16 +383,52 @@ function LoanCard({
   return (
     <div className={summary.is_closed ? `${styles.loanCard} ${styles.loanCardClosed}` : styles.loanCard}>
       {/* Header */}
-      <div className={styles.loanCardHeader}>
+      <div
+        className={`${styles.loanCardHeader} ${styles.loanCardHeaderClickable}`}
+        onClick={() => setCollapsed((v) => !v)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setCollapsed((v) => !v);
+          }
+        }}
+      >
         <div className={styles.loanCardTitle}>
+          <button
+            type="button"
+            className={`${styles.collapseChevron} ${collapsed ? styles.collapseChevronCollapsed : ''}`}
+            onClick={(e) => { e.stopPropagation(); setCollapsed((v) => !v); }}
+            title={collapsed ? 'Expand loan' : 'Collapse loan'}
+            aria-label={collapsed ? 'Expand loan' : 'Collapse loan'}
+          >
+            <svg viewBox="0 0 20 20" fill="none" width={14} height={14}>
+              <path
+                d="M6 8l4 4 4-4"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
           <h3 className={styles.loanName}>{loan.name}</h3>
           {summary.is_closed && <span className={styles.closedBadge}>CLOSED</span>}
           {loan.loan_type === 'flexi' && <span className={styles.flexiBadge}>FLEXI</span>}
           {loan.loan_type === 'monthly' && <span className={styles.flexiBadge}>MONTHLY RATE</span>}
           {loan.loan_type === 'open' && <span className={styles.openBadge}>OPEN-ENDED</span>}
           <span className={styles.loanRate}>{loan.interest_rate.toFixed(2)}% p.a.</span>
+          {collapsed && (
+            <span className={styles.collapsedSummary}>
+              {loan.loan_type === 'open'
+                ? `${fmtCurrency(summary.outstanding_principal)} outstanding`
+                : `${fmtCurrency(loan.emi_amount)}/mo · ${summary.percent_complete}% complete`}
+            </span>
+          )}
         </div>
-        <div className={styles.loanCardActions}>
+        <div className={styles.loanCardActions} onClick={(e) => e.stopPropagation()}>
           <button className={styles.iconBtn} onClick={() => onEdit(loan)} title="Edit loan">
             <svg viewBox="0 0 20 20" fill="none" width={16} height={16}>
               <path
@@ -419,6 +456,9 @@ function LoanCard({
           </button>
         </div>
       </div>
+
+      <div className={`${styles.collapseWrap} ${collapsed ? styles.collapseWrapClosed : ''}`}>
+        <div className={styles.collapseInner}>
 
       {/* Key metrics */}
       <div className={styles.loanMetrics}>
@@ -567,6 +607,8 @@ function LoanCard({
           )}
         </>
       )}
+        </div>
+      </div>
     </div>
   );
 }
