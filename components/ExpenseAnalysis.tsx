@@ -5,6 +5,7 @@ import { ExpenseAnalysis as ExpenseAnalysisData, AnalysisPeriodType, ExpenseDire
 import AppShell from './AppShell';
 import HeadBarChart from './HeadBarChart';
 import ExpenseHeadBreakdownModal from './ExpenseHeadBreakdownModal';
+import AIAnalysisPanel from './AIAnalysisPanel';
 import styles from './ExpenseAnalysis.module.css';
 
 function formatINR(n: number): string {
@@ -84,6 +85,16 @@ export default function ExpenseAnalysis({ displayName }: { displayName: string }
     if (!data || data.totals.length === 0) return 0;
     return Math.max(...data.totals.map((t) => t.total));
   }, [data]);
+
+  const buildExpensesPayload = useCallback(() => {
+    if (!data || data.totals.length === 0) return null;
+    return {
+      periodLabel: periodType === 'year' ? year : formatMonthLabel(month),
+      direction: data.direction,
+      grandTotal: data.grandTotal,
+      totals: data.totals.map((t) => ({ categoryName: t.categoryName, total: t.total })),
+    };
+  }, [data, periodType, year, month]);
 
   return (
     <AppShell active="analysis" displayName={displayName}>
@@ -218,6 +229,14 @@ export default function ExpenseAnalysis({ displayName }: { displayName: string }
               </div>
             </>
           ) : null}
+
+          {data && data.totals.length > 0 && (
+            <AIAnalysisPanel
+              area="expenses"
+              buildPayload={buildExpensesPayload}
+              resetKey={`${periodType}-${period}-${direction}`}
+            />
+          )}
         </main>
 
         {selectedHead && (

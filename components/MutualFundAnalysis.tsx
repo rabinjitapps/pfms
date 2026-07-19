@@ -5,6 +5,7 @@ import { PortfolioSummary, FundGrowthData, FundGrowthPeriodType } from '@/types'
 import AppShell from './AppShell';
 import FundGrowthChart from './FundGrowthChart';
 import YearSwitcher from './YearSwitcher';
+import AIAnalysisPanel from './AIAnalysisPanel';
 import styles from './MutualFundAnalysis.module.css';
 
 const ALL_FUNDS_ID = 'all';
@@ -104,6 +105,27 @@ export default function MutualFundAnalysis({ displayName }: { displayName: strin
   const termTotal = termSplit ? termSplit.shortTerm.currentValue + termSplit.longTerm.currentValue : 0;
   const shortPct = termTotal > 0 && termSplit ? (termSplit.shortTerm.currentValue / termTotal) * 100 : 0;
   const longPct = termTotal > 0 && termSplit ? (termSplit.longTerm.currentValue / termTotal) * 100 : 0;
+
+  // Whole-portfolio payload for the AI analysis panel — deliberately not
+  // scoped to whichever single fund is selected in the dropdown above,
+  // since "analyze my funds" should mean the whole mutual fund portfolio.
+  const buildFundsPayload = useCallback(() => {
+    if (!portfolio || portfolio.holdings.length === 0) return null;
+    return {
+      totalInvested: portfolio.totalInvested,
+      currentValue: portfolio.currentValue,
+      totalGainLoss: portfolio.totalGainLoss,
+      totalGainLossPct: portfolio.totalGainLossPct,
+      holdings: portfolio.holdings.map((h) => ({
+        name: h.fund.name,
+        category: h.fund.category,
+        investedAmount: h.investedAmount,
+        currentValue: h.currentValue,
+        gainLoss: h.gainLoss,
+        gainLossPct: h.gainLossPct,
+      })),
+    };
+  }, [portfolio]);
 
   if (loadingFunds) {
     return (
@@ -316,6 +338,8 @@ export default function MutualFundAnalysis({ displayName }: { displayName: strin
                   </div>
                 </section>
               )}
+
+              <AIAnalysisPanel area="funds" buildPayload={buildFundsPayload} />
             </>
           )}
         </main>

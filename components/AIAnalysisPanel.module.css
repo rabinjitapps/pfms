@@ -1,0 +1,154 @@
+.panel {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--hairline);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.analyzeBtn {
+  background: var(--ledger-green);
+  color: var(--paper-raised);
+  border: none;
+  border-radius: 4px;
+  padding: 10px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease;
+}
+
+.analyzeBtn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.analyzeBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.generatedAt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.errorBanner {
+  background: var(--brick-soft);
+  color: var(--brick);
+  padding: 12px 16px;
+  border-radius: 3px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.loadingText {
+  color: var(--ink-faint);
+  font-size: 13.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.summaryCard {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--brass);
+  border-radius: 4px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.summaryLabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--brass);
+  margin: 0 0 8px;
+}
+
+.summaryText {
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0;
+}
+
+.insightGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.insightCard {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 16px 18px;
+  border-left: 3px solid var(--hairline);
+}
+
+.insightTag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: var(--hairline);
+  color: var(--ink-soft);
+}
+
+.sev_positive {
+  border-left-color: var(--ledger-green);
+}
+.sev_positive .insightTag {
+  background: var(--ledger-green-soft);
+  color: var(--ledger-green);
+}
+
+.sev_warning {
+  border-left-color: var(--brick);
+}
+.sev_warning .insightTag {
+  background: var(--brick-soft);
+  color: var(--brick);
+}
+
+.sev_tip {
+  border-left-color: var(--brass);
+}
+.sev_tip .insightTag {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.sev_info .insightTag {
+  background: var(--hairline);
+  color: var(--ink-soft);
+}
+
+.insightTitle {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 6px;
+  line-height: 1.35;
+}
+
+.insightDetail {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}

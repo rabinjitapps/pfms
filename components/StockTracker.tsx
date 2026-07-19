@@ -6,6 +6,7 @@ import { xirr, CashFlow } from '@/lib/xirr';
 import AddStockModal from './AddStockModal';
 import StockTransactionModal from './StockTransactionModal';
 import AppShell from './AppShell';
+import AIAnalysisPanel from './AIAnalysisPanel';
 import styles from './StockTracker.module.css';
 
 function formatINR(n: number): string {
@@ -153,6 +154,29 @@ export default function StockTracker({ displayName }: { displayName: string }) {
     const allFlows = portfolio.holdings.flatMap((h) => holdingCashFlows(h, today));
     return xirr(allFlows);
   }, [portfolio, today]);
+
+  const buildStocksPayload = useCallback(() => {
+    if (!portfolio || portfolio.holdings.length === 0) return null;
+    return {
+      totalInvested: portfolio.totalInvested,
+      currentValue: portfolio.currentValue,
+      totalGainLoss: portfolio.totalGainLoss,
+      totalGainLossPct: portfolio.totalGainLossPct,
+      portfolioXirrPct: portfolioXirr === null ? null : portfolioXirr * 100,
+      holdings: portfolio.holdings.map((h) => ({
+        name: h.stock.name,
+        symbol: h.stock.symbol,
+        investedAmount: h.investedAmount,
+        currentValue: h.currentValue,
+        gainLoss: h.gainLoss,
+        gainLossPct: h.gainLossPct,
+        xirrPct: (() => {
+          const x = stockXirr.get(h.id);
+          return x === undefined || x === null ? null : x * 100;
+        })(),
+      })),
+    };
+  }, [portfolio, portfolioXirr, stockXirr]);
 
   if (loading) {
     return (
@@ -338,6 +362,8 @@ export default function StockTracker({ displayName }: { displayName: string }) {
             })}
           </div>
         )}
+
+        <AIAnalysisPanel area="stocks" buildPayload={buildStocksPayload} />
         </main>
 
         {showAddModal && (
