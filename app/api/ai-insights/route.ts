@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/session';
 import { generateAIInsights, AIInsightsError, FinancialSnapshot } from '@/lib/aiInsights';
-
+export const maxDuration = 60;
 // The client already has every number in this snapshot on-screen (it's
 // built from the same summary endpoints the Overview page calls), so we
 // accept it as the request body rather than re-querying and re-deriving
