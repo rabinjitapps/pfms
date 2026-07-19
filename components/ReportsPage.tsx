@@ -57,6 +57,9 @@ interface FundTxRow {
   units: number;
   nav: number;
   amount: number;
+  currentValue: number;
+  priceDiff: number;
+  returnPct: number;
   notes: string;
 }
 
@@ -68,6 +71,9 @@ interface StockTxRow {
   quantity: number;
   price: number;
   amount: number;
+  currentValue: number;
+  priceDiff: number;
+  returnPct: number;
   notes: string;
 }
 
@@ -137,16 +143,23 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
     const rows: FundTxRow[] = [];
     for (const h of holdings) {
       if (fundId !== 'all' && h.id !== fundId) continue;
+      const currentNav = Number(h.fund.latest_nav ?? 0);
       for (const t of h.transactions) {
         if (fundFrom && t.date < fundFrom) continue;
         if (fundTo && t.date > fundTo) continue;
+        const amount = Number(t.amount);
+        const currentValue = Number(t.units) * currentNav;
+        const priceDiff = currentValue - amount;
         rows.push({
           date: t.date,
           fundName: h.fund.name,
           type: t.type,
           units: Number(t.units),
           nav: Number(t.nav),
-          amount: Number(t.amount),
+          amount,
+          currentValue,
+          priceDiff,
+          returnPct: amount > 0 ? (priceDiff / amount) * 100 : 0,
           notes: t.notes ?? '',
         });
       }
@@ -162,6 +175,9 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
     { key: 'units', label: 'Units', align: 'right', format: (r) => r.units.toLocaleString('en-IN', { maximumFractionDigits: 4 }) },
     { key: 'nav', label: 'NAV', align: 'right', format: (r) => r.nav.toFixed(2) },
     { key: 'amount', label: 'Amount', align: 'right', format: (r) => formatINR(r.amount) },
+    { key: 'currentValue', label: 'Current Value', align: 'right', format: (r) => formatINR(r.currentValue) },
+    { key: 'priceDiff', label: 'Price Diff', align: 'right', format: (r) => `${r.priceDiff >= 0 ? '+' : ''}${formatINR(r.priceDiff)}` },
+    { key: 'returnPct', label: 'Return %', align: 'right', format: (r) => `${r.returnPct >= 0 ? '+' : ''}${r.returnPct.toFixed(2)}%` },
     { key: 'notes', label: 'Notes' },
   ];
 
@@ -177,9 +193,13 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
     const rows: StockTxRow[] = [];
     for (const h of holdings) {
       if (stockId !== 'all' && h.id !== stockId) continue;
+      const currentPrice = Number(h.stock.latest_price ?? 0);
       for (const t of h.transactions) {
         if (stockFrom && t.date < stockFrom) continue;
         if (stockTo && t.date > stockTo) continue;
+        const amount = Number(t.amount);
+        const currentValue = Number(t.quantity) * currentPrice;
+        const priceDiff = currentValue - amount;
         rows.push({
           date: t.date,
           stockName: h.stock.name,
@@ -187,7 +207,10 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
           type: t.type,
           quantity: Number(t.quantity),
           price: Number(t.price),
-          amount: Number(t.amount),
+          amount,
+          currentValue,
+          priceDiff,
+          returnPct: amount > 0 ? (priceDiff / amount) * 100 : 0,
           notes: t.notes ?? '',
         });
       }
@@ -204,6 +227,9 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
     { key: 'quantity', label: 'Quantity', align: 'right', format: (r) => r.quantity.toLocaleString('en-IN', { maximumFractionDigits: 4 }) },
     { key: 'price', label: 'Price', align: 'right', format: (r) => r.price.toFixed(2) },
     { key: 'amount', label: 'Amount', align: 'right', format: (r) => formatINR(r.amount) },
+    { key: 'currentValue', label: 'Current Value', align: 'right', format: (r) => formatINR(r.currentValue) },
+    { key: 'priceDiff', label: 'Price Diff', align: 'right', format: (r) => `${r.priceDiff >= 0 ? '+' : ''}${formatINR(r.priceDiff)}` },
+    { key: 'returnPct', label: 'Return %', align: 'right', format: (r) => `${r.returnPct >= 0 ? '+' : ''}${r.returnPct.toFixed(2)}%` },
     { key: 'notes', label: 'Notes' },
   ];
 
@@ -542,7 +568,11 @@ function FundsTable({ rows }: { rows: FundTxRow[] }) {
       <thead>
         <tr>
           <th>Date</th><th>Fund</th><th>Type</th><th className={styles.rightCol}>Units</th>
-          <th className={styles.rightCol}>NAV</th><th className={styles.rightCol}>Amount</th><th>Notes</th>
+          <th className={styles.rightCol}>NAV</th><th className={styles.rightCol}>Amount</th>
+          <th className={styles.rightCol}>Current Value</th>
+          <th className={styles.rightCol}>Price Diff</th>
+          <th className={styles.rightCol}>Return %</th>
+          <th>Notes</th>
         </tr>
       </thead>
       <tbody>
@@ -554,6 +584,13 @@ function FundsTable({ rows }: { rows: FundTxRow[] }) {
             <td className={styles.rightCol}>{r.units.toLocaleString('en-IN', { maximumFractionDigits: 4 })}</td>
             <td className={styles.rightCol}>₹{r.nav.toFixed(2)}</td>
             <td className={styles.rightCol}>₹{formatINR(r.amount)}</td>
+            <td className={styles.rightCol}>₹{formatINR(r.currentValue)}</td>
+            <td className={`${styles.rightCol} ${r.priceDiff >= 0 ? styles.totalPositive : styles.totalNegative}`}>
+              {r.priceDiff >= 0 ? '+' : ''}₹{formatINR(r.priceDiff)}
+            </td>
+            <td className={`${styles.rightCol} ${r.returnPct >= 0 ? styles.totalPositive : styles.totalNegative}`}>
+              {r.returnPct >= 0 ? '+' : ''}{r.returnPct.toFixed(2)}%
+            </td>
             <td className={styles.notesCol}>{r.notes}</td>
           </tr>
         ))}
@@ -570,7 +607,10 @@ function StocksTable({ rows }: { rows: StockTxRow[] }) {
         <tr>
           <th>Date</th><th>Stock</th><th>Symbol</th><th>Type</th>
           <th className={styles.rightCol}>Qty</th><th className={styles.rightCol}>Price</th>
-          <th className={styles.rightCol}>Amount</th><th>Notes</th>
+          <th className={styles.rightCol}>Amount</th><th className={styles.rightCol}>Current Value</th>
+          <th className={styles.rightCol}>Price Diff</th>
+          <th className={styles.rightCol}>Return %</th>
+          <th>Notes</th>
         </tr>
       </thead>
       <tbody>
@@ -583,6 +623,13 @@ function StocksTable({ rows }: { rows: StockTxRow[] }) {
             <td className={styles.rightCol}>{r.quantity.toLocaleString('en-IN', { maximumFractionDigits: 4 })}</td>
             <td className={styles.rightCol}>₹{r.price.toFixed(2)}</td>
             <td className={styles.rightCol}>₹{formatINR(r.amount)}</td>
+            <td className={styles.rightCol}>₹{formatINR(r.currentValue)}</td>
+            <td className={`${styles.rightCol} ${r.priceDiff >= 0 ? styles.totalPositive : styles.totalNegative}`}>
+              {r.priceDiff >= 0 ? '+' : ''}₹{formatINR(r.priceDiff)}
+            </td>
+            <td className={`${styles.rightCol} ${r.returnPct >= 0 ? styles.totalPositive : styles.totalNegative}`}>
+              {r.returnPct >= 0 ? '+' : ''}{r.returnPct.toFixed(2)}%
+            </td>
             <td className={styles.notesCol}>{r.notes}</td>
           </tr>
         ))}
