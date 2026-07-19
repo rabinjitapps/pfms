@@ -109,15 +109,23 @@ Aim for 2-4 insights per area, and 3-6 areas total including "overview".`;
 
 export class AIInsightsError extends Error {}
 
-export async function generateAIInsights(snapshot: FinancialSnapshot): Promise<AIInsightsResult> {
+export type AIProvider = 'anthropic' | 'openai' | 'nvidia' | 'emergent';
+
+function resolveProvider(): AIProvider {
+  const raw = (process.env.AI_INSIGHTS_PROVIDER || 'anthropic').toLowerCase().trim();
+  if (raw === 'anthropic' || raw === 'openai' || raw === 'nvidia' || raw === 'emergent') return raw;
+  throw new AIInsightsError(
+    `Unknown AI_INSIGHTS_PROVIDER "${raw}". Use one of: anthropic, openai, nvidia, emergent.`
+  );
+}
+
+// ----------------------------------------------------------------------
+// Anthropic — native Messages API (system + messages, x-api-key header)
+// ----------------------------------------------------------------------
+async function callAnthropic(userContent: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new AIInsightsError('ANTHROPIC_API_KEY is not configured on the server.');
-  }
-
+  if (!apiKey) throw new AIInsightsError('ANTHROPIC_API_KEY is not configured on the server.');
   const model = process.env.ANTHROPIC_INSIGHTS_MODEL || 'claude-sonnet-5';
-
-  const userContent = `Here is the financial snapshot (JSON):\n\n${JSON.stringify(snapshot, null, 2)}\n\nProduce the insights JSON now.`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -143,9 +151,126 @@ export async function generateAIInsights(snapshot: FinancialSnapshot): Promise<A
   const data = await res.json();
   const textBlock = (data.content ?? []).find((b: { type: string }) => b.type === 'text');
   const raw: string | undefined = textBlock?.text;
+  if (!raw) throw new AIInsightsError('Anthropic API returned no text content.');
+  return raw;
+}
+
+// ----------------------------------------------------------------------
+// Generic OpenAI-compatible chat/completions caller — used for OpenAI
+// itself, NVIDIA NIM, and Emergent's Universal Key, since all three
+// expose the same request/response shape (Bearer auth, `messages` array
+// with a system role, `choices[0].message.content` in the response).
+// ----------------------------------------------------------------------
+async function callOpenAICompatible(opts: {
+  providerLabel: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+  userContent: string;
+}): Promise<string> {
+  const { providerLabel, baseUrl, apiKey, model, userContent } = opts;
+
+  const res = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.4,
+      max_tokens: 2000,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userContent },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new AIInsightsError(`${providerLabel} API request failed (${res.status}): ${text.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const raw: string | undefined = data?.choices?.[0]?.message?.content;
+  if (!raw) throw new AIInsightsError(`${providerLabel} API returned no content.`);
+  return raw;
+}
+
+async function callOpenAI(userContent: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new AIInsightsError('OPENAI_API_KEY is not configured on the server.');
+  const model = process.env.OPENAI_INSIGHTS_MODEL || 'gpt-5.6-terra';
+  return callOpenAICompatible({
+    providerLabel: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    apiKey,
+    model,
+    userContent,
+  });
+}
+
+async function callNvidia(userContent: string): Promise<string> {
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) throw new AIInsightsError('NVIDIA_API_KEY is not configured on the server.');
+  const model = process.env.NVIDIA_INSIGHTS_MODEL || 'meta/llama-3.3-70b-instruct';
+  return callOpenAICompatible({
+    providerLabel: 'NVIDIA',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    apiKey,
+    model,
+    userContent,
+  });
+}
+
+// Emergent's Universal Key is normally consumed from inside apps built on
+// the Emergent platform itself, so there isn't one universally documented
+// public base URL for calling it from an external, self-hosted app like
+// this one. It does speak the same OpenAI-compatible chat/completions
+// shape though, so EMERGENT_API_BASE_URL is left configurable — check
+// your Emergent dashboard / integration docs for the exact value to use.
+async function callEmergent(userContent: string): Promise<string> {
+  const apiKey = process.env.EMERGENT_API_KEY;
+  if (!apiKey) throw new AIInsightsError('EMERGENT_API_KEY is not configured on the server.');
+  const baseUrl = process.env.EMERGENT_API_BASE_URL;
+  if (!baseUrl) {
+    throw new AIInsightsError(
+      'EMERGENT_API_BASE_URL is not configured. Check your Emergent dashboard for the correct base URL for your Universal Key.'
+    );
+  }
+  const model = process.env.EMERGENT_INSIGHTS_MODEL || 'gpt-5.6-terra';
+  return callOpenAICompatible({
+    providerLabel: 'Emergent',
+    baseUrl,
+    apiKey,
+    model,
+    userContent,
+  });
+}
+
+export async function generateAIInsights(snapshot: FinancialSnapshot): Promise<AIInsightsResult> {
+  const provider = resolveProvider();
+  const userContent = `Here is the financial snapshot (JSON):\n\n${JSON.stringify(snapshot, null, 2)}\n\nProduce the insights JSON now.`;
+
+  let raw: string;
+  switch (provider) {
+    case 'anthropic':
+      raw = await callAnthropic(userContent);
+      break;
+    case 'openai':
+      raw = await callOpenAI(userContent);
+      break;
+    case 'nvidia':
+      raw = await callNvidia(userContent);
+      break;
+    case 'emergent':
+      raw = await callEmergent(userContent);
+      break;
+  }
 
   if (!raw) {
-    throw new AIInsightsError('Anthropic API returned no text content.');
+    throw new AIInsightsError('The AI provider returned no text content.');
   }
 
   const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
