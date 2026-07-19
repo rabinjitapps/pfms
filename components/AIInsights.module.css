@@ -1,0 +1,240 @@
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.loadingText {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 14px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+/* ----------------------------------------------------------------
+   In-page header
+   ---------------------------------------------------------------- */
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 32px 24px 0;
+  max-width: 840px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+  white-space: nowrap;
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.main {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 20px 24px 80px;
+}
+
+.errorBanner {
+  background: var(--brick-soft);
+  color: var(--brick);
+  padding: 12px 16px;
+  border-radius: 3px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.emptyState {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 32px 26px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+/* ----------------------------------------------------------------
+   Toolbar
+   ---------------------------------------------------------------- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.refreshBtn {
+  background: var(--ledger-green);
+  color: var(--paper-raised);
+  border: none;
+  border-radius: 4px;
+  padding: 10px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.generatedAt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* ----------------------------------------------------------------
+   Overall summary card
+   ---------------------------------------------------------------- */
+.summaryCard {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--brass);
+  border-radius: 4px;
+  padding: 22px 24px;
+  margin-bottom: 26px;
+}
+
+.summaryLabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--brass);
+  margin: 0 0 8px;
+}
+
+.summaryText {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0;
+}
+
+/* ----------------------------------------------------------------
+   Areas + insight cards
+   ---------------------------------------------------------------- */
+.areaSection {
+  margin-bottom: 28px;
+}
+
+.sectionHeading {
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  margin: 0 0 12px;
+}
+
+.insightGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.insightCard {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 16px 18px;
+  border-left: 3px solid var(--hairline);
+}
+
+.insightTag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: var(--hairline);
+  color: var(--ink-soft);
+}
+
+.sev_positive {
+  border-left-color: var(--ledger-green);
+}
+.sev_positive .insightTag {
+  background: var(--ledger-green-soft);
+  color: var(--ledger-green);
+}
+
+.sev_warning {
+  border-left-color: var(--brick);
+}
+.sev_warning .insightTag {
+  background: var(--brick-soft);
+  color: var(--brick);
+}
+
+.sev_tip {
+  border-left-color: var(--brass);
+}
+.sev_tip .insightTag {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.sev_info .insightTag {
+  background: var(--hairline);
+  color: var(--ink-soft);
+}
+
+.insightTitle {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 6px;
+  line-height: 1.35;
+}
+
+.insightDetail {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ----------------------------------------------------------------
+   Footer note
+   ---------------------------------------------------------------- */
+.snapshotFooter {
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+
+.snapshotFooterText {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  line-height: 1.5;
+  margin: 0;
+}
