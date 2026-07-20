@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   PortfolioSummary,
   StockPortfolioSummary,
+  CryptoPortfolioSummary,
   ExpenseEntry,
   ExpenseCategory,
 } from '@/types';
@@ -11,7 +12,7 @@ import AppShell from './AppShell';
 import { exportReportToExcel, exportReportToPdf, ReportColumn } from '@/lib/reportExport';
 import styles from './ReportsPage.module.css';
 
-type Tab = 'funds' | 'stocks' | 'expenses';
+type Tab = 'funds' | 'stocks' | 'crypto' | 'expenses';
 
 function formatINR(n: number): string {
   return n.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
@@ -77,6 +78,20 @@ interface StockTxRow {
   notes: string;
 }
 
+interface CryptoTxRow {
+  date: string;
+  cryptoName: string;
+  symbol: string;
+  type: string;
+  quantity: number;
+  price: number;
+  amount: number;
+  currentValue: number;
+  priceDiff: number;
+  returnPct: number;
+  notes: string;
+}
+
 interface ExpenseTxRow {
   date: string;
   head: string;
@@ -97,6 +112,7 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
 
   const [funds, setFunds] = useState<PortfolioSummary | null>(null);
   const [stocks, setStocks] = useState<StockPortfolioSummary | null>(null);
+  const [crypto, setCrypto] = useState<CryptoPortfolioSummary | null>(null);
   const [expenseEntries, setExpenseEntries] = useState<ExpenseEntry[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,21 +121,24 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [fundsRes, stocksRes, expensesRes] = await Promise.all([
+      const [fundsRes, stocksRes, cryptoRes, expensesRes] = await Promise.all([
         fetch('/api/holdings'),
         fetch('/api/stock-holdings'),
+        fetch('/api/crypto-holdings'),
         fetch('/api/reports/expenses'),
       ]);
-      if (!fundsRes.ok || !stocksRes.ok || !expensesRes.ok) {
+      if (!fundsRes.ok || !stocksRes.ok || !cryptoRes.ok || !expensesRes.ok) {
         setError('Could not load all of your data. Some reports below may be incomplete.');
       }
-      const [fundsData, stocksData, expensesData] = await Promise.all([
+      const [fundsData, stocksData, cryptoData, expensesData] = await Promise.all([
         fundsRes.ok ? fundsRes.json() : null,
         stocksRes.ok ? stocksRes.json() : null,
+        cryptoRes.ok ? cryptoRes.json() : null,
         expensesRes.ok ? expensesRes.json() : null,
       ]);
       setFunds(fundsData);
       setStocks(stocksData);
+      setCrypto(cryptoData);
       setExpenseEntries(expensesData?.entries ?? []);
       setExpenseCategories(expensesData?.categories ?? []);
     } catch {
@@ -235,6 +254,58 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
 
   const stockTotal = useMemo(() => stockRows.reduce((s, r) => s + (r.type === 'SELL' ? -r.amount : r.amount), 0), [stockRows]);
 
+  // ── Crypto tab state ──────────────────────────────────────────────────
+  const [cryptoId, setCryptoId] = useState('all');
+  const [cryptoFrom, setCryptoFrom] = useState('');
+  const [cryptoTo, setCryptoTo] = useState('');
+
+  const cryptoRows = useMemo<CryptoTxRow[]>(() => {
+    const holdings = crypto?.holdings ?? [];
+    const rows: CryptoTxRow[] = [];
+    for (const h of holdings) {
+      if (cryptoId !== 'all' && h.id !== cryptoId) continue;
+      const currentPrice = Number(h.crypto.latest_price ?? 0);
+      for (const t of h.transactions) {
+        if (cryptoFrom && t.date < cryptoFrom) continue;
+        if (cryptoTo && t.date > cryptoTo) continue;
+        const amount = Number(t.amount);
+        const currentValue = Number(t.quantity) * currentPrice;
+        const priceDiff = currentValue - amount;
+        rows.push({
+          date: t.date,
+          cryptoName: h.crypto.name,
+          symbol: h.crypto.symbol,
+          type: t.type,
+          quantity: Number(t.quantity),
+          price: Number(t.price),
+          amount,
+          currentValue,
+          priceDiff,
+          returnPct: amount > 0 ? (priceDiff / amount) * 100 : 0,
+          notes: t.notes ?? '',
+        });
+      }
+    }
+    rows.sort((a, b) => b.date.localeCompare(a.date));
+    return rows;
+  }, [crypto, cryptoId, cryptoFrom, cryptoTo]);
+
+  const cryptoColumns: ReportColumn<CryptoTxRow>[] = [
+    { key: 'date', label: 'Date', format: (r) => formatDate(r.date) },
+    { key: 'cryptoName', label: 'Crypto' },
+    { key: 'symbol', label: 'Symbol' },
+    { key: 'type', label: 'Type' },
+    { key: 'quantity', label: 'Quantity', align: 'right', format: (r) => r.quantity.toLocaleString('en-IN', { maximumFractionDigits: 8 }) },
+    { key: 'price', label: 'Price', align: 'right', format: (r) => r.price.toFixed(2) },
+    { key: 'amount', label: 'Amount', align: 'right', format: (r) => formatINR(r.amount) },
+    { key: 'currentValue', label: 'Current Value', align: 'right', format: (r) => formatINR(r.currentValue) },
+    { key: 'priceDiff', label: 'Price Diff', align: 'right', format: (r) => `${r.priceDiff >= 0 ? '+' : ''}${formatINR(r.priceDiff)}` },
+    { key: 'returnPct', label: 'Return %', align: 'right', format: (r) => `${r.returnPct >= 0 ? '+' : ''}${r.returnPct.toFixed(2)}%` },
+    { key: 'notes', label: 'Notes' },
+  ];
+
+  const cryptoTotal = useMemo(() => cryptoRows.reduce((s, r) => s + (r.type === 'SELL' ? -r.amount : r.amount), 0), [cryptoRows]);
+
   // ── Expenses tab state ───────────────────────────────────────────────
   const [periodMode, setPeriodMode] = useState<'consolidated' | 'yearly' | 'monthly'>('consolidated');
   const [expYear, setExpYear] = useState(todayYear());
@@ -340,6 +411,10 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
       const filename = `stock-transactions-${periodLabel()}`;
       if (format === 'excel') exportReportToExcel(stockRows, stockColumns, filename, 'Stock Transactions');
       else exportReportToPdf(stockRows, stockColumns, filename, 'Stock Transaction Report');
+    } else if (tab === 'crypto') {
+      const filename = `crypto-transactions-${periodLabel()}`;
+      if (format === 'excel') exportReportToExcel(cryptoRows, cryptoColumns, filename, 'Crypto Transactions');
+      else exportReportToPdf(cryptoRows, cryptoColumns, filename, 'Crypto Transaction Report');
     } else {
       const filename = `expense-report-${periodMode}-${periodLabel()}`;
       if (groupBy === 'transactions') {
@@ -353,7 +428,7 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
   }
 
   const rowCount =
-    tab === 'funds' ? fundRows.length : tab === 'stocks' ? stockRows.length : groupBy === 'transactions' ? expenseTxRows.length : expenseHeadRows.length;
+    tab === 'funds' ? fundRows.length : tab === 'stocks' ? stockRows.length : tab === 'crypto' ? cryptoRows.length : groupBy === 'transactions' ? expenseTxRows.length : expenseHeadRows.length;
 
   if (loading) {
     return (
@@ -388,6 +463,12 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
               onClick={() => setTab('stocks')}
             >
               Stock Transactions
+            </button>
+            <button
+              className={tab === 'crypto' ? styles.tabBtnActive : styles.tabBtn}
+              onClick={() => setTab('crypto')}
+            >
+              Crypto Transactions
             </button>
             <button
               className={tab === 'expenses' ? styles.tabBtnActive : styles.tabBtn}
@@ -447,6 +528,34 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
               </label>
               {(stockFrom || stockTo || stockId !== 'all') && (
                 <button className={styles.clearBtn} onClick={() => { setStockId('all'); setStockFrom(''); setStockTo(''); }}>
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── Crypto filter bar ─────────────────────────────────────── */}
+          {tab === 'crypto' && (
+            <div className={styles.filterBar}>
+              <label className={styles.filterField}>
+                <span>Crypto</span>
+                <select value={cryptoId} onChange={(e) => setCryptoId(e.target.value)}>
+                  <option value="all">All cryptos</option>
+                  {(crypto?.holdings ?? []).map((h) => (
+                    <option key={h.id} value={h.id}>{h.crypto.name} ({h.crypto.symbol})</option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.filterField}>
+                <span>From</span>
+                <input type="date" value={cryptoFrom} onChange={(e) => setCryptoFrom(e.target.value)} />
+              </label>
+              <label className={styles.filterField}>
+                <span>To</span>
+                <input type="date" value={cryptoTo} onChange={(e) => setCryptoTo(e.target.value)} />
+              </label>
+              {(cryptoFrom || cryptoTo || cryptoId !== 'all') && (
+                <button className={styles.clearBtn} onClick={() => { setCryptoId('all'); setCryptoFrom(''); setCryptoTo(''); }}>
                   Clear filters
                 </button>
               )}
@@ -528,6 +637,11 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
                 Net invested: {stockTotal >= 0 ? '+' : ''}₹{formatINR(stockTotal)}
               </span>
             )}
+            {tab === 'crypto' && (
+              <span className={cryptoTotal >= 0 ? styles.totalPositive : styles.totalNegative}>
+                Net invested: {cryptoTotal >= 0 ? '+' : ''}₹{formatINR(cryptoTotal)}
+              </span>
+            )}
             {tab === 'expenses' && (
               <>
                 <span className={styles.totalPositive}>Income: ₹{formatINR(expenseInflowTotal)}</span>
@@ -548,6 +662,7 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
           <div className={styles.tableWrap}>
             {tab === 'funds' && <FundsTable rows={fundRows} />}
             {tab === 'stocks' && <StocksTable rows={stockRows} />}
+            {tab === 'crypto' && <CryptoTable rows={cryptoRows} />}
             {tab === 'expenses' && groupBy === 'transactions' && <ExpenseTxTable rows={expenseTxRows} />}
             {tab === 'expenses' && groupBy === 'headwise' && <ExpenseHeadTable rows={expenseHeadRows} />}
           </div>
@@ -621,6 +736,45 @@ function StocksTable({ rows }: { rows: StockTxRow[] }) {
             <td>{r.symbol}</td>
             <td><span className={r.type === 'BUY' ? styles.tagBuy : styles.tagSell}>{r.type}</span></td>
             <td className={styles.rightCol}>{r.quantity.toLocaleString('en-IN', { maximumFractionDigits: 4 })}</td>
+            <td className={styles.rightCol}>₹{r.price.toFixed(2)}</td>
+            <td className={styles.rightCol}>₹{formatINR(r.amount)}</td>
+            <td className={styles.rightCol}>₹{formatINR(r.currentValue)}</td>
+            <td className={`${styles.rightCol} ${r.priceDiff >= 0 ? styles.totalPositive : styles.totalNegative}`}>
+              {r.priceDiff >= 0 ? '+' : ''}₹{formatINR(r.priceDiff)}
+            </td>
+            <td className={`${styles.rightCol} ${r.returnPct >= 0 ? styles.totalPositive : styles.totalNegative}`}>
+              {r.returnPct >= 0 ? '+' : ''}{r.returnPct.toFixed(2)}%
+            </td>
+            <td className={styles.notesCol}>{r.notes}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function CryptoTable({ rows }: { rows: CryptoTxRow[] }) {
+  if (rows.length === 0) return <p className={styles.emptyText}>No crypto transactions match these filters.</p>;
+  return (
+    <table className={styles.table}>
+      <thead>
+        <tr>
+          <th>Date</th><th>Crypto</th><th>Symbol</th><th>Type</th>
+          <th className={styles.rightCol}>Qty</th><th className={styles.rightCol}>Price</th>
+          <th className={styles.rightCol}>Amount</th><th className={styles.rightCol}>Current Value</th>
+          <th className={styles.rightCol}>Price Diff</th>
+          <th className={styles.rightCol}>Return %</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>
+            <td>{formatDate(r.date)}</td>
+            <td>{r.cryptoName}</td>
+            <td>{r.symbol}</td>
+            <td><span className={r.type === 'BUY' ? styles.tagBuy : styles.tagSell}>{r.type}</span></td>
+            <td className={styles.rightCol}>{r.quantity.toLocaleString('en-IN', { maximumFractionDigits: 8 })}</td>
             <td className={styles.rightCol}>₹{r.price.toFixed(2)}</td>
             <td className={styles.rightCol}>₹{formatINR(r.amount)}</td>
             <td className={styles.rightCol}>₹{formatINR(r.currentValue)}</td>

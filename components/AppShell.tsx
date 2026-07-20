@@ -7,6 +7,7 @@ interface Props {
     | 'funds'
     | 'fund-analysis'
     | 'stocks'
+    | 'crypto'
     | 'expenses'
     | 'analysis'
     | 'loans'

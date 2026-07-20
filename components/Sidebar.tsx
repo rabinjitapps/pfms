@@ -11,6 +11,7 @@ interface Props {
     | 'funds'
     | 'fund-analysis'
     | 'stocks'
+    | 'crypto'
     | 'expenses'
     | 'analysis'
     | 'loans'
@@ -118,6 +119,18 @@ export default function Sidebar({ active, displayName }: Props) {
               <rect x="13.5" y="3.5" width="2.4" height="12" rx="0.4" stroke="currentColor" strokeWidth="1.4" />
             </svg>
             Stocks
+          </Link>
+          <Link
+            href="/crypto"
+            className={active === 'crypto' ? styles.navLinkActive : styles.navLink}
+            aria-current={active === 'crypto' ? 'page' : undefined}
+            onClick={() => setOpen(false)}
+          >
+            <svg className={styles.navIcon} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M8.3 7.2h2.6a1.6 1.6 0 010 3.2H8.3m0 0h3a1.6 1.6 0 010 3.2H8.3m0-6.4V6m0 8v-1.2m1.8 0V14m0-8V6.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Crypto
           </Link>
           <Link
             href="/expenses"
