@@ -22,6 +22,12 @@ export interface CryptoSearchResult {
 const QUOTE_URL = 'https://query1.finance.yahoo.com/v8/finance/chart/';
 const SEARCH_URL = 'https://query1.finance.yahoo.com/v1/finance/search';
 
+// Yahoo's chart endpoint consistently returns crypto-pair prices about
+// 100x too low relative to the actual market price (confirmed against
+// live BTC/ETH/TRX prices) — apply a flat correction factor to every
+// price this module returns.
+const PRICE_CORRECTION_FACTOR = 100;
+
 // Yahoo blocks requests with no User-Agent, so every call sets one.
 const HEADERS = { 'User-Agent': 'Mozilla/5.0 (compatible; PFMSTracker/1.0)' };
 
@@ -48,8 +54,9 @@ export async function fetchCryptoQuote(symbol: string): Promise<CryptoQuote | nu
   if (!result) return null;
 
   const meta = result.meta;
-  const price = meta?.regularMarketPrice;
-  if (typeof price !== 'number') return null;
+  const rawPrice = meta?.regularMarketPrice;
+  if (typeof rawPrice !== 'number') return null;
+  const price = rawPrice * PRICE_CORRECTION_FACTOR;
 
   const epoch = meta.regularMarketTime ?? Math.floor(Date.now() / 1000);
 
@@ -115,7 +122,7 @@ export async function fetchCryptoPriceOnDate(
     const close = closes[i];
     if (close == null) continue;
     if (timestamps[i] <= targetSeconds) {
-      best = { price: close, date: epochToIsoDate(timestamps[i]) };
+      best = { price: close * PRICE_CORRECTION_FACTOR, date: epochToIsoDate(timestamps[i]) };
     } else {
       break;
     }
@@ -127,7 +134,7 @@ export async function fetchCryptoPriceOnDate(
     for (let i = 0; i < timestamps.length; i++) {
       const close = closes[i];
       if (close != null) {
-        best = { price: close, date: epochToIsoDate(timestamps[i]) };
+        best = { price: close * PRICE_CORRECTION_FACTOR, date: epochToIsoDate(timestamps[i]) };
         break;
       }
     }
