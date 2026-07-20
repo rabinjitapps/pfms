@@ -170,6 +170,65 @@ export interface StockPortfolioSummary {
 }
 
 // ----------------------------------------------------------------------
+// Crypto tracker
+// ----------------------------------------------------------------------
+
+export interface Crypto {
+  id: string;
+  symbol: string;
+  name: string;
+  exchange: string | null;
+  latest_price: number | null;
+  latest_price_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CryptoTransactionType = 'BUY' | 'SELL';
+
+export interface CryptoTransaction {
+  id: string;
+  holding_id: string;
+  type: CryptoTransactionType;
+  date: string;
+  quantity: number;
+  price: number;
+  amount: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface CryptoHolding {
+  id: string;
+  user_id: string;
+  crypto_id: string;
+  created_at: string;
+  crypto: Crypto;
+  transactions: CryptoTransaction[];
+}
+
+// Computed, client-facing summary for a crypto holding
+export interface CryptoHoldingSummary {
+  id: string;
+  crypto: Crypto;
+  totalQuantity: number;
+  investedAmount: number;
+  avgPrice: number;
+  currentValue: number;
+  gainLoss: number;
+  gainLossPct: number;
+  transactions: CryptoTransaction[];
+}
+
+export interface CryptoPortfolioSummary {
+  totalInvested: number;
+  currentValue: number;
+  totalGainLoss: number;
+  totalGainLossPct: number;
+  holdings: CryptoHoldingSummary[];
+}
+
+// ----------------------------------------------------------------------
 // Expense tracker
 // ----------------------------------------------------------------------
 
