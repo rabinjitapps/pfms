@@ -13,6 +13,7 @@ export async function GET() {
       .from('goals')
       .select('*')
       .eq('user_id', userId)
+      .order('target_date', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: true }),
     // All contributions across every goal, fetched in one go — the explicit
     // range overrides Supabase's default 1000-row select() cap, same
