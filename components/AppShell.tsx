@@ -14,6 +14,7 @@ interface Props {
     | 'reports'
     | 'bank-accounts'
     | 'credit-cards'
+    | 'goals'
     | 'ai-insights';
   displayName: string;
   children: React.ReactNode;

@@ -18,6 +18,7 @@ interface Props {
     | 'reports'
     | 'bank-accounts'
     | 'credit-cards'
+    | 'goals'
     | 'ai-insights';
   displayName: string;
 }
@@ -198,6 +199,19 @@ export default function Sidebar({ active, displayName }: Props) {
               <path d="M5 12.2h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
             Credit Cards
+          </Link>
+          <Link
+            href="/goals"
+            className={active === 'goals' ? styles.navLinkActive : styles.navLink}
+            aria-current={active === 'goals' ? 'page' : undefined}
+            onClick={() => setOpen(false)}
+          >
+            <svg className={styles.navIcon} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.6" />
+              <circle cx="10" cy="10" r="4" stroke="currentColor" strokeWidth="1.4" />
+              <circle cx="10" cy="10" r="1.1" fill="currentColor" />
+            </svg>
+            Goals
           </Link>
           <Link
             href="/reports"
