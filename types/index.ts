@@ -609,3 +609,66 @@ export interface CreditCardPortfolioSummary {
   total_credit_limit: number;
   total_available_credit: number;
 }
+
+// ----------------------------------------------------------------------
+// Goals & milestones
+// ----------------------------------------------------------------------
+
+export type GoalStatus = 'active' | 'completed' | 'archived';
+
+export interface Goal {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  category: string | null; // e.g. "Travel", "Emergency Fund", "Gadget"
+  target_amount: number;
+  target_date: string | null; // YYYY-MM-DD, optional
+  icon: string | null; // a single emoji, optional — defaults client-side if unset
+  status: GoalStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoalContribution {
+  id: string;
+  user_id: string;
+  goal_id: string;
+  date: string; // YYYY-MM-DD
+  amount: number;
+  note: string | null;
+  created_at: string;
+}
+
+// One calendar month's worth of contributions toward a goal, for the
+// month-wise breakdown under each goal card.
+export interface GoalMonthlyContribution {
+  month: string; // YYYY-MM
+  total: number;
+  contributions: GoalContribution[];
+}
+
+// A year's contributions, grouped further into months.
+export interface GoalYearlyContribution {
+  year: string; // YYYY
+  total: number;
+  months: GoalMonthlyContribution[];
+}
+
+export interface GoalSummary {
+  goal: Goal;
+  total_contributed: number;
+  percent_complete: number; // 0-100, capped for display
+  remaining_amount: number;
+  contributions: GoalContribution[]; // flat, most-recent first
+  by_year: GoalYearlyContribution[]; // grouped for the accordion, most-recent year/month first
+  months_remaining: number | null; // calendar months to target_date; null if no target_date set
+}
+
+export interface GoalPortfolioSummary {
+  goals: GoalSummary[];
+  total_target: number;
+  total_contributed: number;
+  active_count: number;
+  completed_count: number;
+}
