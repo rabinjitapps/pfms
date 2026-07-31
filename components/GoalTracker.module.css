@@ -1,0 +1,685 @@
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.loadingText {
+  padding: 80px 24px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 14px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
+}
+
+/* ── page header ── */
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 32px 24px 0;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 24px 80px;
+}
+
+.errorBanner {
+  background: var(--brick-soft);
+  color: var(--brick);
+  padding: 12px 16px;
+  border-radius: 3px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* ── portfolio summary ── */
+.summaryCard {
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 26px 28px 24px;
+  margin-bottom: 24px;
+}
+
+.summaryHeading {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin: 0 0 16px;
+}
+
+.summaryRow {
+  display: flex;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryLabel {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.summaryBig {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.summaryProgressWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summaryProgressLabel {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* ── toolbar ── */
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.addBtn {
+  background: var(--ink);
+  color: var(--paper-raised);
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.addBtn:hover {
+  opacity: 0.85;
+}
+
+.addBtnSecondary {
+  background: none;
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.addBtnSecondary:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.addBtnSecondary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── empty state ── */
+.emptyState {
+  text-align: center;
+  padding: 64px 24px;
+  background: var(--paper-raised);
+  border: 1px dashed var(--hairline);
+  border-radius: 8px;
+}
+
+.emptyTitle {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.emptyHint {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+/* ── goal grid + card ── */
+.goalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+
+.goalCard {
+  position: relative;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 24px 24px 20px;
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+
+.goalCard:hover {
+  box-shadow: 0 10px 28px -14px rgba(28, 27, 25, 0.22);
+  transform: translateY(-1px);
+  border-color: #cfc7b2;
+}
+
+.goalCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.goalCardTitleGroup {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.goalIcon {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.goalTitleText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goalName {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.badgeRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.categoryBadge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  background: var(--brass-soft);
+  color: var(--brass);
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.achievedBadge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: var(--ledger-green-soft);
+  color: var(--ledger-green);
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+/* ── ring ── */
+.ring {
+  flex-shrink: 0;
+}
+
+.ringArc {
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.ringText {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--ink);
+}
+
+/* ── card action icons (stacked above the ring) ── */
+.goalCardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.goalCardActions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.goalCard:hover .goalCardActions,
+.goalCard:focus-within .goalCardActions {
+  opacity: 1;
+}
+
+.iconBtn,
+.iconBtnDanger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-raised);
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: background 0.12s, color 0.12s;
+}
+
+.iconBtn:hover {
+  background: var(--brass-soft);
+  color: var(--brass);
+  border-color: var(--brass);
+}
+
+.iconBtnDanger:hover {
+  background: var(--brick-soft);
+  color: var(--brick);
+  border-color: var(--brick);
+}
+
+.goalDescription {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+/* ── progress bar ── */
+.progressTrack {
+  height: 8px;
+  background: var(--hairline);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s ease;
+}
+
+/* ── amounts ── */
+.amountsRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.amountBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.metricLabel {
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.amountValuePos {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ledger-green);
+}
+
+.amountValue {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/* ── target date badge ── */
+.dateBadge,
+.dateBadgeDone {
+  display: inline-block;
+  font-size: 12px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+
+.dateBadge {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.dateBadgeDone {
+  background: var(--ledger-green-soft);
+  color: var(--ledger-green);
+}
+
+/* ── card footer ── */
+.goalCardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 14px;
+}
+
+.addTxnBtn {
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+
+.addTxnBtn:hover {
+  border-color: var(--ink);
+}
+
+.toggleHistory {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: 0.01em;
+  transition: color 0.12s;
+}
+
+.toggleHistory:hover {
+  color: var(--ink);
+}
+
+/* ── contribution history accordion ── */
+.history {
+  margin-top: 16px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.emptyHistory {
+  font-size: 13px;
+  color: var(--ink-faint);
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+
+.yearBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.yearRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.yearRow:hover {
+  background: var(--brass-soft);
+}
+
+.yearChevron {
+  font-size: 10px;
+  color: var(--ink-faint);
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.yearChevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.yearLabel {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  flex: 1;
+}
+
+.yearTotal {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ledger-green);
+}
+
+.monthList {
+  display: flex;
+  flex-direction: column;
+  padding-left: 18px;
+  gap: 2px;
+}
+
+.monthBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.monthRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 7px 4px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.monthRow:hover {
+  background: var(--brass-soft);
+}
+
+.monthChevron {
+  font-size: 9px;
+  color: var(--ink-faint);
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.monthChevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.monthLabel {
+  font-size: 13px;
+  color: var(--ink);
+  flex: 1;
+}
+
+.monthTotal {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.contribList {
+  display: flex;
+  flex-direction: column;
+  padding-left: 18px;
+  gap: 2px;
+}
+
+.contribRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+}
+
+.contribRow:last-child {
+  border-bottom: none;
+}
+
+.contribMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.contribDate {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--ink-faint);
+  letter-spacing: 0.03em;
+}
+
+.contribNote {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.contribRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.contribAmount {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ledger-green);
+  white-space: nowrap;
+}
+
+.contribActions {
+  display: flex;
+  gap: 4px;
+}
+
+.iconBtnSmall,
+.iconBtnSmallDanger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  color: var(--ink-faint);
+  transition: background 0.12s, color 0.12s;
+}
+
+.iconBtnSmall:hover {
+  background: var(--brass-soft);
+  color: var(--brass);
+  border-color: var(--brass);
+}
+
+.iconBtnSmallDanger:hover {
+  background: var(--brick-soft);
+  color: var(--brick);
+  border-color: var(--brick);
+}
+
+@media (max-width: 600px) {
+  .goalGrid {
+    grid-template-columns: 1fr;
+  }
+  .goalCard {
+    padding: 18px 16px 16px;
+  }
+  .summaryCard {
+    padding: 18px 16px 14px;
+  }
+  .summaryRow {
+    gap: 24px;
+  }
+  .goalCardActions {
+    opacity: 1;
+  }
+}
