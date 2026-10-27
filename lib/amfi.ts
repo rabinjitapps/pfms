@@ -9,7 +9,18 @@ export interface AmfiNavRow {
   date: string; // ISO yyyy-mm-dd
 }
 
-const AMFI_URL = 'https://www.amfiindia.com/spages/NAVAll.txt';
+// AMFI has moved its portal domain over time and sometimes blocks requests that
+// look like bots (no User-Agent) by returning an HTML page with a 200 status.
+// Try each known host in turn and only accept a response that actually parses.
+const AMFI_URLS = [
+  'https://portal.amfiindia.com/spages/NAVAll.txt',
+  'https://www.amfiindia.com/spages/NAVAll.txt',
+];
+
+const AMFI_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (compatible; PFMS-Tracker/1.0)',
+  Accept: 'text/plain,*/*',
+};
 
 function parseAmfiDate(raw: string): string | null {
   // AMFI date format: DD-Mon-YYYY, e.g. "17-Jun-2026"
@@ -25,16 +36,10 @@ function parseAmfiDate(raw: string): string | null {
   return `${year}-${month}-${day.padStart(2, '0')}`;
 }
 
-export async function fetchAllAmfiNavs(): Promise<AmfiNavRow[]> {
-  const res = await fetch(AMFI_URL, { cache: 'no-store' });
-  if (!res.ok) {
-    throw new Error(`AMFI fetch failed: ${res.status}`);
-  }
-  const text = await res.text();
-  const lines = text.split('\n');
+function parseAmfiText(text: string): AmfiNavRow[] {
   const rows: AmfiNavRow[] = [];
 
-  for (const line of lines) {
+  for (const line of text.split('\n')) {
     const trimmed = line.trim();
     if (!trimmed) continue;
     // Section headers don't have semicolons in this exact field count
@@ -57,6 +62,32 @@ export async function fetchAllAmfiNavs(): Promise<AmfiNavRow[]> {
   }
 
   return rows;
+}
+
+export async function fetchAllAmfiNavs(): Promise<AmfiNavRow[]> {
+  let lastError = 'unknown error';
+
+  for (const url of AMFI_URLS) {
+    try {
+      const res = await fetch(url, {
+        cache: 'no-store',
+        headers: AMFI_HEADERS,
+        redirect: 'follow',
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!res.ok) {
+        lastError = `${url} responded ${res.status}`;
+        continue;
+      }
+      const rows = parseAmfiText(await res.text());
+      if (rows.length > 0) return rows;
+      lastError = `${url} returned no parseable NAV rows`;
+    } catch (err) {
+      lastError = `${url}: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  throw new Error(`AMFI fetch failed (${lastError})`);
 }
 
 export async function fetchAmfiNavForScheme(schemeCode: string): Promise<AmfiNavRow | null> {

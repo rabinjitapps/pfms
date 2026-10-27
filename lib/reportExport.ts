@@ -46,7 +46,9 @@ export function exportReportToPdf<T>(
   rows: T[],
   columns: ReportColumn<T>[],
   filename: string,
-  title: string
+  title: string,
+  // Rows for which this returns true are drawn in red (e.g. SELL transactions)
+  isHighlightRow?: (row: T) => boolean
 ): void {
   const doc = new jsPDF({ orientation: columns.length > 5 ? 'landscape' : 'portrait' });
   doc.setFontSize(14);
@@ -60,6 +62,13 @@ export function exportReportToPdf<T>(
     head: [columns.map((c) => c.label)],
     body: rows.map((row) => columns.map((c) => cellValue(row, c))),
     styles: { fontSize: 8, cellPadding: 2.5 },
+    didParseCell: (data) => {
+      if (!isHighlightRow || data.section !== 'body') return;
+      if (isHighlightRow(rows[data.row.index])) {
+        data.cell.styles.textColor = [161, 61, 42]; // brick red
+        data.cell.styles.fillColor = [243, 230, 225];
+      }
+    },
     headStyles: { fillColor: [31, 77, 58], textColor: 255 },
     columnStyles: columns.reduce((acc, c, i) => {
       if (c.align === 'right') acc[i] = { halign: 'right' };

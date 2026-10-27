@@ -106,3 +106,24 @@ export function navOnOrBefore(history: NavHistoryPoint[], targetDate: string): n
   }
   return result;
 }
+
+/**
+ * Latest published NAV for a scheme via mfapi.in. Used as a fallback when the
+ * AMFI NAVAll.txt feed can't be reached or doesn't contain a scheme.
+ */
+export async function fetchLatestNavFromMfapi(
+  schemeCode: string
+): Promise<{ nav: number; date: string } | null> {
+  const res = await fetch(`https://api.mfapi.in/mf/${encodeURIComponent(schemeCode)}/latest`, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) return null;
+  const json = (await res.json()) as MfapiSchemeResponse;
+  if (json.status !== 'SUCCESS' || !Array.isArray(json.data) || json.data.length === 0) return null;
+
+  const point = json.data[0];
+  const nav = parseFloat(point.nav);
+  if (isNaN(nav) || nav <= 0) return null;
+  return { nav, date: toIsoDate(point.date) };
+}
