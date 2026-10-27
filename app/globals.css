@@ -7,8 +7,11 @@
   --ink-soft: #5B5750;
   --ink-faint: #8C887F;
   --hairline: #DDD7C8;
-  --ledger-green: #1F4D3A;
-  --ledger-green-soft: #E4ECE6;
+  /* Accent colour. --accent-base is set by the theme switcher (lib/theme.ts);
+     everything else derives from it, so one value re-colours the whole app. */
+  --accent-base: #1F4D3A;
+  --ledger-green: var(--accent-base);
+  --ledger-green-soft: color-mix(in srgb, var(--ledger-green) 12%, var(--paper-raised));
   --brick: #A13D2A;
   --brick-soft: #F3E6E1;
   --brass: #9C7A3C;
@@ -17,6 +20,23 @@
   --font-display: 'Lora', Georgia, serif;
   --font-body: 'Inter', -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+}
+
+/* Dark appearance — set via <html data-mode="dark"> */
+:root[data-mode='dark'] {
+  color-scheme: dark;
+  --paper: #161512;
+  --paper-raised: #1F1E1A;
+  --ink: #F1EDE3;
+  --ink-soft: #BDB7A9;
+  --ink-faint: #8F8A7E;
+  --hairline: #37342C;
+  /* lighten the accent so it stays legible on dark surfaces */
+  --ledger-green: color-mix(in srgb, var(--accent-base) 55%, white);
+  --brick: #E5826C;
+  --brick-soft: color-mix(in srgb, var(--brick) 16%, var(--paper-raised));
+  --brass: #D4B070;
+  --brass-soft: color-mix(in srgb, var(--brass) 16%, var(--paper-raised));
 }
 
 * {
