@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { fetchAllAmfiNavs } from '@/lib/amfi';
+import { syncFundNavs } from '@/lib/navSync';
 
 // Protect this route with a shared secret so only Vercel Cron (or you) can trigger it.
 function isAuthorized(req: NextRequest): boolean {
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const { data: funds, error: fundsErr } = await supabaseAdmin
     .from('funds')
-    .select('id, scheme_code')
+    .select('id, name, scheme_code')
     .not('scheme_code', 'is', null);
 
   if (fundsErr) {
@@ -27,32 +27,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ updated: 0, message: 'No AMFI-linked funds in the system' });
   }
 
-  let allNavs;
-  try {
-    allNavs = await fetchAllAmfiNavs();
-  } catch (err) {
-    console.error('AMFI fetch failed in cron:', err);
-    return NextResponse.json({ error: 'Failed to reach AMFI' }, { status: 502 });
-  }
-
-  const navByScheme = new Map(allNavs.map((r) => [r.schemeCode, r]));
-  let updated = 0;
-
-  for (const fund of funds) {
-    const row = navByScheme.get(fund.scheme_code as string);
-    if (!row) continue;
-
-    await supabaseAdmin
-      .from('funds')
-      .update({ latest_nav: row.nav, latest_nav_date: row.date, updated_at: new Date().toISOString() })
-      .eq('id', fund.id);
-
-    await supabaseAdmin
-      .from('nav_history')
-      .upsert({ fund_id: fund.id, date: row.date, nav: row.nav }, { onConflict: 'fund_id,date' });
-
-    updated += 1;
-  }
-
-  return NextResponse.json({ updated, total: funds.length });
+  const result = await syncFundNavs(funds);
+  return NextResponse.json(result);
 }
