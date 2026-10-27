@@ -271,6 +271,19 @@
   max-width: 220px;
 }
 
+.table tbody tr.rowSell {
+  background: var(--brick-soft);
+}
+
+.table tbody tr.rowSell:hover {
+  background: color-mix(in srgb, var(--brick) 16%, var(--paper-raised));
+}
+
+.table tbody tr.rowSell td:not(.totalPositive):not(.totalNegative) {
+  color: var(--brick);
+  border-bottom-color: color-mix(in srgb, var(--brick) 18%, var(--hairline));
+}
+
 .tagBuy {
   display: inline-block;
   font-family: var(--font-mono);

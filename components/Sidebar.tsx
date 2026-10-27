@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
+import ThemeSwitcher from './ThemeSwitcher';
 import styles from './Sidebar.module.css';
 
 interface Props {
@@ -230,6 +231,7 @@ export default function Sidebar({ active, displayName }: Props) {
 
         <div className={styles.footer}>
           <span className={styles.greeting}>{displayName}</span>
+          <ThemeSwitcher />
           <button className={styles.signOutBtn} onClick={() => signOut({ callbackUrl: '/login' })}>
             Sign out
           </button>

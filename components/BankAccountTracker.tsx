@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import AppShell from './AppShell';
 import AddBankAccountModal from './AddBankAccountModal';
 import BankTransactionModal from './BankTransactionModal';
 import styles from './BankAccountTracker.module.css';
 import modalStyles from './BankModals.module.css';
 import { BankAccount, BankAccountSummary, BankLedgerEntry, BankPortfolioSummary } from '@/types';
+import { monthLabel } from '@/lib/goals';
 
 interface Props {
   displayName: string;
@@ -145,6 +146,194 @@ function EditTransactionModal({
   );
 }
 
+interface LedgerMonthGroup {
+  month: string; // "YYYY-MM"
+  totalIn: number;
+  totalOut: number;
+  entries: BankLedgerEntry[];
+}
+
+interface LedgerYearGroup {
+  year: string;
+  totalIn: number;
+  totalOut: number;
+  months: LedgerMonthGroup[];
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// Group a ledger into year -> month buckets, most recent first, with money
+// in / out totals for every bucket. Same shape as the Goals contribution history.
+function groupLedger(entries: BankLedgerEntry[]): LedgerYearGroup[] {
+  const sorted = [...entries].sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return a.created_at < b.created_at ? 1 : -1;
+  });
+
+  const yearMap = new Map<string, Map<string, BankLedgerEntry[]>>();
+  for (const t of sorted) {
+    const year = t.date.slice(0, 4);
+    const month = t.date.slice(0, 7);
+    if (!yearMap.has(year)) yearMap.set(year, new Map());
+    const monthMap = yearMap.get(year)!;
+    if (!monthMap.has(month)) monthMap.set(month, []);
+    monthMap.get(month)!.push(t);
+  }
+
+  const sumIn = (list: BankLedgerEntry[]) =>
+    round2(list.filter((t) => t.type === 'credit').reduce((s, t) => s + t.amount, 0));
+  const sumOut = (list: BankLedgerEntry[]) =>
+    round2(list.filter((t) => t.type === 'debit').reduce((s, t) => s + t.amount, 0));
+
+  return [...yearMap.entries()]
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([year, monthMap]) => {
+      const months: LedgerMonthGroup[] = [...monthMap.entries()]
+        .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+        .map(([month, list]) => ({ month, totalIn: sumIn(list), totalOut: sumOut(list), entries: list }));
+      return {
+        year,
+        totalIn: round2(months.reduce((s, m) => s + m.totalIn, 0)),
+        totalOut: round2(months.reduce((s, m) => s + m.totalOut, 0)),
+        months,
+      };
+    });
+}
+
+function LedgerRow({
+  t,
+  onEdit,
+  onDelete,
+}: {
+  t: BankLedgerEntry;
+  onEdit: (t: BankLedgerEntry) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className={styles.ledgerRow}>
+      <div className={styles.ledgerMain}>
+        <span className={styles.ledgerDate}>{fmtDate(t.date)}</span>
+        <span className={styles.ledgerDesc}>
+          {t.transfer_id
+            ? `Transfer ${t.type === 'debit' ? 'to' : 'from'} ${t.transfer_account_name ?? 'another account'}`
+            : t.description || (t.type === 'credit' ? 'Credit' : 'Debit')}
+          {t.category && <span className={styles.categoryBadge}>{t.category}</span>}
+          {t.expense_entry_id && <span className={styles.categoryBadge}>via Expenses</span>}
+        </span>
+      </div>
+      <div className={styles.ledgerRight}>
+        <span className={t.type === 'credit' ? styles.ledgerAmountPos : styles.ledgerAmountNeg}>
+          {t.type === 'credit' ? '+' : '−'}
+          {fmtCurrency(t.amount)}
+        </span>
+        <span className={styles.ledgerRunning}>Bal {fmtCurrency(t.running_balance)}</span>
+        <div className={styles.ledgerActions}>
+          {!t.transfer_id && !t.expense_entry_id && (
+            <button
+              className={styles.iconBtnSmall}
+              onClick={() => onEdit(t)}
+              title="Edit transaction"
+            >
+              <svg viewBox="0 0 20 20" fill="none" width={13} height={13}>
+                <path
+                  d="M14.5 3.5l2 2L6 16l-2.5.5.5-2.5L14.5 3.5z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          )}
+          <button
+            className={styles.iconBtnSmallDanger}
+            onClick={() => onDelete(t.id)}
+            title={t.expense_entry_id ? 'Delete (removes the linked Expenses entry too)' : 'Delete transaction'}
+          >
+            <svg viewBox="0 0 20 20" fill="none" width={13} height={13}>
+              <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LedgerHistory({
+  transactions,
+  onEdit,
+  onDelete,
+}: {
+  transactions: BankLedgerEntry[];
+  onEdit: (t: BankLedgerEntry) => void;
+  onDelete: (id: string) => void;
+}) {
+  const byYear = useMemo(() => groupLedger(transactions), [transactions]);
+  // Latest year and its latest month start open so recent activity is visible straight away
+  const [openYears, setOpenYears] = useState<Set<string>>(new Set(byYear[0] ? [byYear[0].year] : []));
+  const [openMonths, setOpenMonths] = useState<Set<string>>(
+    new Set(byYear[0]?.months[0] ? [byYear[0].months[0].month] : [])
+  );
+
+  const toggle = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, key: string) =>
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  if (byYear.length === 0) {
+    return <p className={styles.emptyLedger}>No transactions yet.</p>;
+  }
+
+  return (
+    <div className={styles.history}>
+      {byYear.map((y) => (
+        <div key={y.year} className={styles.yearBlock}>
+          <button className={styles.yearRow} onClick={() => toggle(setOpenYears, y.year)}>
+            <span className={styles.yearChevron} data-open={openYears.has(y.year)}>▸</span>
+            <span className={styles.yearLabel}>{y.year}</span>
+            <span className={styles.periodTotals}>
+              <span className={styles.totalIn}>+{fmtCurrency(y.totalIn)}</span>
+              <span className={styles.totalOut}>−{fmtCurrency(y.totalOut)}</span>
+            </span>
+          </button>
+
+          {openYears.has(y.year) && (
+            <div className={styles.monthList}>
+              {y.months.map((m) => {
+                const key = m.month;
+                return (
+                  <div key={m.month} className={styles.monthBlock}>
+                    <button className={styles.monthRow} onClick={() => toggle(setOpenMonths, key)}>
+                      <span className={styles.monthChevron} data-open={openMonths.has(key)}>▸</span>
+                      <span className={styles.monthLabel}>{monthLabel(m.month)}</span>
+                      <span className={styles.periodTotals}>
+                        <span className={styles.totalIn}>+{fmtCurrency(m.totalIn)}</span>
+                        <span className={styles.totalOut}>−{fmtCurrency(m.totalOut)}</span>
+                      </span>
+                    </button>
+
+                    {openMonths.has(key) && (
+                      <div className={styles.monthEntries}>
+                        {m.entries.map((t) => (
+                          <LedgerRow key={t.id} t={t} onEdit={onEdit} onDelete={onDelete} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AccountCard({
   summary,
   expanded,
@@ -165,7 +354,6 @@ function AccountCard({
   onDeleteTransaction: (id: string) => void;
 }) {
   const { account, balance, total_credits, total_debits, transactions } = summary;
-  const recentFirst = [...transactions].reverse();
 
   return (
     <div className={styles.accountCard}>
@@ -229,59 +417,11 @@ function AccountCard({
 
       {expanded && (
         <div className={styles.ledger}>
-          {recentFirst.length === 0 ? (
-            <p className={styles.emptyLedger}>No transactions yet.</p>
-          ) : (
-            recentFirst.map((t) => (
-              <div key={t.id} className={styles.ledgerRow}>
-                <div className={styles.ledgerMain}>
-                  <span className={styles.ledgerDate}>{fmtDate(t.date)}</span>
-                  <span className={styles.ledgerDesc}>
-                    {t.transfer_id
-                      ? `Transfer ${t.type === 'debit' ? 'to' : 'from'} ${t.transfer_account_name ?? 'another account'}`
-                      : t.description || (t.type === 'credit' ? 'Credit' : 'Debit')}
-                    {t.category && <span className={styles.categoryBadge}>{t.category}</span>}
-                    {t.expense_entry_id && <span className={styles.categoryBadge}>via Expenses</span>}
-                  </span>
-                </div>
-                <div className={styles.ledgerRight}>
-                  <span className={t.type === 'credit' ? styles.ledgerAmountPos : styles.ledgerAmountNeg}>
-                    {t.type === 'credit' ? '+' : '−'}
-                    {fmtCurrency(t.amount)}
-                  </span>
-                  <span className={styles.ledgerRunning}>Bal {fmtCurrency(t.running_balance)}</span>
-                  <div className={styles.ledgerActions}>
-                    {!t.transfer_id && !t.expense_entry_id && (
-                      <button
-                        className={styles.iconBtnSmall}
-                        onClick={() => onEditTransaction(t)}
-                        title="Edit transaction"
-                      >
-                        <svg viewBox="0 0 20 20" fill="none" width={13} height={13}>
-                          <path
-                            d="M14.5 3.5l2 2L6 16l-2.5.5.5-2.5L14.5 3.5z"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                    <button
-                      className={styles.iconBtnSmallDanger}
-                      onClick={() => onDeleteTransaction(t.id)}
-                      title={t.expense_entry_id ? 'Delete (removes the linked Expenses entry too)' : 'Delete transaction'}
-                    >
-                      <svg viewBox="0 0 20 20" fill="none" width={13} height={13}>
-                        <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
+          <LedgerHistory
+            transactions={transactions}
+            onEdit={onEditTransaction}
+            onDelete={onDeleteTransaction}
+          />
         </div>
       )}
     </div>

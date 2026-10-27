@@ -227,7 +227,7 @@
 }
 
 .primaryBtn:hover {
-  background: #173b2c;
+  background: color-mix(in srgb, var(--ledger-green) 80%, black);
 }
 
 .primaryBtn:active {

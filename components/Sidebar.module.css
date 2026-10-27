@@ -47,6 +47,8 @@
   gap: 2px;
   padding: 16px 14px;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto; /* keep the footer (theme + sign out) reachable on short screens */
 }
 
 .navLink,

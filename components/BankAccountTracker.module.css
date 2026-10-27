@@ -374,6 +374,103 @@
   gap: 2px;
 }
 
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.yearBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.yearRow,
+.monthRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+
+.monthRow {
+  padding: 7px 4px;
+}
+
+.yearRow:hover,
+.monthRow:hover {
+  background: var(--brass-soft);
+}
+
+.yearChevron,
+.monthChevron {
+  font-size: 10px;
+  color: var(--ink-faint);
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.yearChevron[data-open='true'],
+.monthChevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.yearLabel {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  flex: 1;
+}
+
+.monthLabel {
+  font-size: 13px;
+  color: var(--ink);
+  flex: 1;
+}
+
+.periodTotals {
+  display: flex;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.totalIn {
+  color: var(--ledger-green);
+}
+
+.totalOut {
+  color: var(--brick);
+}
+
+.monthList {
+  display: flex;
+  flex-direction: column;
+  padding-left: 18px;
+  gap: 2px;
+}
+
+.monthBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.monthEntries {
+  display: flex;
+  flex-direction: column;
+  padding-left: 18px;
+}
+
 .emptyLedger {
   font-size: 13px;
   color: var(--ink-faint);

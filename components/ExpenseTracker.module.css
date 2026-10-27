@@ -215,7 +215,7 @@
 }
 
 .inflowBtn:hover {
-  background: #173b2c;
+  background: color-mix(in srgb, var(--ledger-green) 80%, black);
 }
 
 .inflowBtn:active {
@@ -237,7 +237,7 @@
 }
 
 .outflowBtn:hover {
-  background: #7e2a1e;
+  background: color-mix(in srgb, var(--brick) 80%, black);
 }
 
 .outflowBtn:active {

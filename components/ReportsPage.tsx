@@ -406,7 +406,7 @@ export default function ReportsPage({ displayName }: { displayName: string }) {
     if (tab === 'funds') {
       const filename = `mutual-fund-transactions-${periodLabel()}`;
       if (format === 'excel') exportReportToExcel(fundRows, fundColumns, filename, 'Fund Transactions');
-      else exportReportToPdf(fundRows, fundColumns, filename, 'Mutual Fund Transaction Report');
+      else exportReportToPdf(fundRows, fundColumns, filename, 'Mutual Fund Transaction Report', (r) => r.type === 'SELL');
     } else if (tab === 'stocks') {
       const filename = `stock-transactions-${periodLabel()}`;
       if (format === 'excel') exportReportToExcel(stockRows, stockColumns, filename, 'Stock Transactions');
@@ -692,7 +692,7 @@ function FundsTable({ rows }: { rows: FundTxRow[] }) {
       </thead>
       <tbody>
         {rows.map((r, i) => (
-          <tr key={i}>
+          <tr key={i} className={r.type === 'SELL' ? styles.rowSell : undefined}>
             <td>{formatDate(r.date)}</td>
             <td>{r.fundName}</td>
             <td><span className={r.type === 'BUY' ? styles.tagBuy : styles.tagSell}>{r.type}</span></td>

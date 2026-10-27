@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { ExpenseCategory, ExpenseDirection, ExpenseEntry } from '@/types';
+import { evaluateAmountExpr, hasOperator } from '@/lib/amountExpr';
 
 interface BankAccountOption {
   id: string;
@@ -44,6 +45,25 @@ export default function AddExpenseModal({
 
   const kind = direction === 'INFLOW' ? 'INCOME' : 'EXPENSE';
 
+  // The amount field accepts simple sums like "1200 + 350 - 50".
+  const evaluatedAmount = useMemo(() => evaluateAmountExpr(amount), [amount]);
+  const showCalcPreview = hasOperator(amount) && evaluatedAmount !== null;
+
+  function appendOperator(op: '+' | '-') {
+    setAmount((prev) => {
+      const t = prev.trimEnd();
+      if (t === '') return op === '-' ? '-' : prev; // a leading "+" is pointless
+      // Swap a dangling operator instead of stacking them ("5 + -")
+      if (/[+\-]$/.test(t)) return t.slice(0, -1).trimEnd() + ` ${op} `;
+      return `${t} ${op} `;
+    });
+  }
+
+  // Tidy the field to its result when the user leaves it ("100 + 50" -> "150")
+  function collapseAmount() {
+    if (hasOperator(amount) && evaluatedAmount !== null) setAmount(String(evaluatedAmount));
+  }
+
   const headsForDirection = useMemo(
     () => categories.filter((c) => c.kind === kind),
     [categories, kind]
@@ -61,9 +81,13 @@ export default function AddExpenseModal({
   async function handleSubmit() {
     setError('');
 
-    const amountNum = Number(amount);
-    if (!amountNum || amountNum <= 0) {
-      setError('Enter an amount greater than zero.');
+    const amountNum = evaluatedAmount;
+    if (amountNum === null) {
+      setError(amount.trim() === '' ? 'Enter an amount greater than zero.' : 'Check the amount — use numbers with + or − between them.');
+      return;
+    }
+    if (amountNum <= 0) {
+      setError('The amount must come to more than zero.');
       return;
     }
     if (categoryId !== NEW_HEAD_VALUE && !categoryId) {
@@ -184,16 +208,49 @@ export default function AddExpenseModal({
               onChange={(e) => setDate(e.target.value)}
             />
           </label>
-          <label style={styles.label}>
+          <label style={{ ...styles.label, flex: 1.5 }}>
             Amount (₹)
-            <input
-              style={styles.input}
-              type="number"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-            />
+            <span style={styles.amountWrap}>
+              <input
+                style={{ ...styles.input, ...styles.amountInput }}
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                onBlur={collapseAmount}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    collapseAmount();
+                  }
+                }}
+                placeholder="0.00 or 500+250"
+              />
+              <button
+                type="button"
+                style={styles.opBtn}
+                onClick={() => appendOperator('+')}
+                aria-label="Add"
+                title="Add another amount"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                style={styles.opBtn}
+                onClick={() => appendOperator('-')}
+                aria-label="Subtract"
+                title="Subtract an amount"
+              >
+                −
+              </button>
+            </span>
+            {showCalcPreview && (
+              <span style={styles.calcPreview}>
+                = ₹{evaluatedAmount!.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            )}
           </label>
         </div>
 
@@ -351,6 +408,32 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--ink-faint)',
     fontWeight: 400,
     marginTop: '6px',
+  },
+  amountWrap: {
+    display: 'flex',
+    gap: '6px',
+  },
+  amountInput: {
+    flex: 1,
+    minWidth: 0,
+  },
+  opBtn: {
+    width: '38px',
+    flexShrink: 0,
+    border: '1px solid var(--hairline)',
+    borderRadius: '3px',
+    background: 'var(--paper)',
+    color: 'var(--ink)',
+    fontSize: '18px',
+    fontWeight: 600,
+    lineHeight: 1,
+  },
+  calcPreview: {
+    fontFamily: 'var(--font-mono)',
+    fontSize: '12.5px',
+    fontWeight: 600,
+    color: 'var(--ledger-green)',
+    marginTop: '2px',
   },
   input: {
     width: '100%',

@@ -119,18 +119,31 @@ export default function Dashboard({ displayName }: { displayName: string }) {
       const res = await fetch('/api/funds/refresh-nav', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        setRefreshMsg(
-          data.updated === 0
-            ? 'No AMFI-linked funds to update.'
-            : `Updated ${data.updated} of ${data.total} fund${data.total === 1 ? '' : 's'}.`
-        );
+        const names = (data.failed ?? []) as string[];
+        if (data.total === 0) {
+          setRefreshMsg(
+            data.skipped > 0
+              ? `None of your funds have an AMFI scheme code (${data.skipped} added manually), so there is nothing to sync. Update their NAV manually, or re-add them via AMFI search.`
+              : 'You have no funds to update yet.'
+          );
+        } else if (data.updated === 0) {
+          setRefreshMsg(
+            `Couldn't fetch NAV for any of your ${data.total} fund${data.total === 1 ? '' : 's'}.` +
+              (data.amfiError ? ' AMFI could not be reached and the backup source had no data either.' : ' Neither AMFI nor the backup source returned a NAV for them.')
+          );
+        } else {
+          setRefreshMsg(
+            `Updated ${data.updated} of ${data.total} fund${data.total === 1 ? '' : 's'}.` +
+              (names.length > 0 ? ` No NAV found for: ${names.join(', ')}.` : '')
+          );
+        }
         await load();
       } else {
         setRefreshMsg(data.error || 'Refresh failed.');
       }
     } finally {
       setRefreshing(false);
-      setTimeout(() => setRefreshMsg(''), 4000);
+      setTimeout(() => setRefreshMsg(''), 9000);
     }
   }
 
